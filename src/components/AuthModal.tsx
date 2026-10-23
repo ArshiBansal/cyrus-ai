@@ -2,16 +2,19 @@
 /* ══ AuthModal.tsx — full-screen split sign-in sheet ═
    left: cyrus.ai logo + programming-language wall · right: LOGIN/SIGN UP tabs,
    email + 6-digit verification code (server-issued), OAuth row */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { useNavigate } from "@/lib/router";
 import { useStore } from "../lib/store";
-import { LANG_COLORS } from "../lib/util";
+import { fmt, LANG_COLORS } from "../lib/util";
 import { googleConfigured, promptGoogle, readGoogleRedirectCredential } from "../lib/google";
 import { githubConfigured, promptGitHub } from "../lib/github";
 import { api, serverAuthReady } from "../lib/api";
+import { mountTurnstile, turnstileConfigured } from "../lib/turnstile";
+import type { TurnstileHandle } from "../lib/turnstile";
 import { REPOS } from "../data/repos";
-import { RESOURCES } from "../data/resources";
+import { PROGRAMS } from "../data/orgs";
+import { CRAWL } from "../data/crawlStats";
 import { Logo, Word } from "./ui";
 
 const PANEL_LANGS = ["TypeScript", "Python", "Go", "Rust", "JavaScript", "Java", "C++", "Swift", "MDX"];
@@ -39,6 +42,43 @@ export default function AuthModal() {
   const [resendIn, setResendIn] = useState(0);
   const [busyGoogle, setBusyGoogle] = useState(false);
   const [busyGithub, setBusyGithub] = useState(false);
+
+  /* ── Cloudflare Turnstile: the sheet owns the slot, the widget owns the token.
+     Tokens are single-use, so every attempt - pass or fail - burns one and the
+     handle resets the widget for the next. Without a site key configured none of
+     this exists: no script, no slot, no gate. ── */
+  const tsOn = turnstileConfigured();
+  const tsSlot = useRef<HTMLDivElement>(null);
+  const tsHandle = useRef<TurnstileHandle | null>(null);
+  const [tsToken, setTsToken] = useState("");
+
+  /* signed code envelope handed back by /start when the deploy has no database:
+     it has to travel with the verify call or the code cannot be checked. */
+  const mailCh = useRef("");
+
+  useEffect(() => {
+    if (!authOpen || !tsOn) return;
+    const el = tsSlot.current;
+    if (!el) return;
+    let live = true;
+    void mountTurnstile(el, (t) => { if (live) setTsToken(t); }).then((h) => {
+      if (!live) { h?.remove(); return; }
+      tsHandle.current = h;
+    });
+    return () => {
+      live = false;
+      tsHandle.current?.remove();
+      tsHandle.current = null;
+      setTsToken("");
+    };
+  }, [authOpen, tsOn]);
+
+  const tsGuard = (): boolean => {
+    if (!tsOn || tsToken) return true;
+    toast("Tick the verification box, then we send the code.");
+    return false;
+  };
+  const tsBurn = () => { tsHandle.current?.reset(); };
 
   /* landing spot for the Google redirect fallback: when the chooser popup was
      blocked we navigated the whole tab to Google, which returns here with
@@ -70,6 +110,7 @@ export default function AuthModal() {
   useEffect(() => {
     if (authOpen) return;
     setStep("form"); setCode(""); setResendIn(0); setBusyMail(false);
+    mailCh.current = "";
   }, [authOpen]);
 
   if (!authOpen) return null;
@@ -85,21 +126,20 @@ export default function AuthModal() {
 
   const isEmail = (m: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(m);
 
-  /* step 1: ask the server for a code. Without a reachable backend we keep
-     the old browser-only demo sign-in so the sheet never dead-ends. */
+  /* step 1: ask the server for a code. Nobody gets signed in from here - the
+     6 digits have to come back from the mailbox first. */
   const sendCode = async (e: FormEvent) => {
     e.preventDefault();
     const mail = email.trim().toLowerCase();
     if (!isEmail(mail)) { toast("That email doesn't look right."); return; }
+    if (!tsGuard()) return;
     setBusyMail(true);
+    const token = tsToken; tsBurn();
     try {
-      const r = await api.emailStart(mail);
-      if (!r) {
-        const who = tab === "signup" ? (name.trim() || mail.split("@")[0]) : mail.split("@")[0];
-        done(who, "Email", tab === "signup" ? `Account created - welcome, ${who}!` : `Welcome back, ${who}!`, { email: mail });
-        return;
-      }
+      const r = await api.emailStart(mail, token || undefined);
+      if (!r) { toast("Sign-in isn't reachable right now - try again in a moment."); return; }
       if (r.ok) {
+        mailCh.current = r.challenge || "";
         setStep("code"); setCode(""); setResendIn(30);
         toast(r.demo && r.code
           ? `Demo mode (no mail key configured) - your code is ${r.code}`
@@ -108,7 +148,9 @@ export default function AuthModal() {
       }
       toast(r.reason === "too_soon" ? "A code was just sent - give it half a minute, then try again."
         : r.reason === "invalid_email" ? "That email doesn't look right."
-        : "Couldn't send the code right now - GitHub or Google sign-in work instantly.");
+        : r.reason === "captcha_required" ? "Tick the verification box first, then send again."
+        : r.reason === "captcha_failed" ? "Cloudflare did not recognise that check - tick it again and resend."
+        : "Couldn't send the code right now - sign in with Google, or try again shortly.");
     } finally {
       setBusyMail(false);
     }
@@ -121,12 +163,13 @@ export default function AuthModal() {
     if (!/^\d{6}$/.test(code)) { toast("Enter the 6-digit code from the email."); return; }
     setBusyMail(true);
     try {
-      const r = await api.emailVerify(mail, code, tab === "signup" ? name.trim() || undefined : undefined);
+      const r = await api.emailVerify(mail, code, tab === "signup" ? name.trim() || undefined : undefined, mailCh.current || undefined);
       if (r?.ok && r.user) {
         const first = r.user.name.split(" ")[0];
         done(r.user.name, "Email", tab === "signup" ? `Account created - welcome, ${first}!` : `Welcome back, ${first}!`, { email: mail });
         return;
       }
+      if (r?.challenge) mailCh.current = r.challenge;
       toast(!r ? "Sign-in didn't complete - try again."
         : r.reason === "expired" ? "That code expired - send yourself a new one."
         : r.reason === "locked" || r.reason === "no_code" ? "That code is no longer active - send a new one."
@@ -138,28 +181,32 @@ export default function AuthModal() {
 
   const resend = async () => {
     if (resendIn > 0 || busyMail) return;
+    if (!tsGuard()) return;
     setBusyMail(true);
+    const token = tsToken; tsBurn();
     try {
-      const r = await api.emailStart(email.trim().toLowerCase());
+      const r = await api.emailStart(email.trim().toLowerCase(), token || undefined);
       if (r?.ok) {
+        mailCh.current = r.challenge || "";
         setResendIn(30);
         toast(r.demo && r.code ? `Demo mode - your new code is ${r.code}` : "A fresh code is on its way.");
       } else {
-        toast(r?.reason === "too_soon" ? "Almost - give it a few more seconds." : "Couldn't resend right now - try again.");
+        toast(r?.reason === "too_soon" ? "Almost - give it a few more seconds."
+          : r?.reason === "captcha_required" || r?.reason === "captcha_failed" ? "Tick the verification box again, then resend."
+          : "Couldn't resend right now - try again.");
       }
     } finally {
       setBusyMail(false);
     }
   };
 
-  const oauth = (p: string) => {
-    const typed = window.prompt(`Your ${p} username (demo - no real ${p} call is made):`);
-    if (!typed) return;
-    done(typed.trim().replace(/^@/, "") || "you", p, `Signed in with ${p}. Opening your dashboard…`);
-  };
+  /* a provider button with no OAuth app configured must say so instead of
+     inventing an identity - email codes are the path that works today. */
+  const notWired = (p: string) =>
+    toast(`${p} sign-in is not connected on this deploy - use the email code below.`);
 
   const signInGoogle = async () => {
-    if (!googleConfigured()) { oauth("Google"); return; }
+    if (!googleConfigured()) { notWired("Google"); return; }
     setBusyGoogle(true);
     try {
       const g = await promptGoogle();
@@ -173,7 +220,7 @@ export default function AuthModal() {
   };
 
   const signInGitHub = async () => {
-    if (!githubConfigured()) { oauth("GitHub"); return; }
+    if (!githubConfigured()) { notWired("GitHub"); return; }
     setBusyGithub(true);
     try {
       const g = await promptGitHub();
@@ -187,7 +234,7 @@ export default function AuthModal() {
   };
 
   const label = "block font-mono text-[11px] tracking-[.12em] uppercase text-cocoa mb-2";
-  const fin = "w-full bg-card border border-line rounded-[14px] px-4 py-3.5 text-[15px] outline-none transition-all placeholder:text-dim focus:border-accent focus:shadow-[0_0_0_3px_rgba(180, 96, 44,.14)]";
+  const fin = "w-full bg-card border border-line rounded-[14px] px-4 py-3.5 text-[15px] outline-none transition-all placeholder:text-dim focus:border-accent focus:shadow-[0_0_0_3px_rgba(34, 197, 94,.14)]";
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto" style={{ background: "var(--color-paper)" }}
@@ -211,7 +258,8 @@ export default function AuthModal() {
             </div>
 
             <p className="text-cocoa text-[15px] leading-[1.7] mt-7 max-w-[440px]">
-              One account for the whole season - {REPOS.length} flagship open-source repos, {RESOURCES.length} curated resources, every program and hackathon that matters.
+              One account for the whole season - {fmt(CRAWL.issues)} open issues, {REPOS.length} flagship
+              open-source repos and every one of the {PROGRAMS.length} tracked programs.
             </p>
 
             <div className="grid grid-cols-3 gap-2.5 mt-8 max-w-[440px]">
@@ -225,7 +273,7 @@ export default function AuthModal() {
 
             <div className="flex items-center gap-3 mt-8 font-mono text-[10.5px] tracking-[.1em] uppercase text-dim">
               <span className="h-px flex-1 bg-liness" />
-              <span>repos · programs · hackathons · resources</span>
+              <span>issues · repos · programs · your board</span>
               <span className="h-px flex-1 bg-liness" />
             </div>
           </div>
@@ -241,8 +289,8 @@ export default function AuthModal() {
             </h1>
             <p className="text-center text-cocoa text-[15px] leading-[1.6] mt-3 mb-8">
               {tab === "login"
-                ? "Log in to access your matches and saved roadmaps."
-                : "One account for hackathons, programs, skills and deadlines."}
+                ? "Log in to pick up the issues you are already working on."
+                : "One account for issues, programs, repos and your board."}
             </p>
 
             {/* tabs */}
@@ -254,6 +302,9 @@ export default function AuthModal() {
                 </button>
               ))}
             </div>
+
+            {/* Cloudflare Turnstile - only present when a site key is configured */}
+            {tsOn && <div ref={tsSlot} className="mb-7 min-h-[68px]" aria-live="polite" />}
 
             {step === "form" ? (
               <form onSubmit={sendCode} className="grid gap-5">
@@ -268,7 +319,7 @@ export default function AuthModal() {
                   <input className={fin} type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
                 </div>
                 <button type="submit" disabled={busyMail}
-                  className="mt-1 w-full bg-accent hover:bg-accentd text-white font-display font-bold text-[16px] rounded-[14px] py-4 shadow-[0_14px_30px_-12px_rgba(180, 96, 44,.6)] transition-all active:scale-[.99] cursor-pointer disabled:opacity-60 disabled:cursor-wait">
+                  className="mt-1 w-full bg-accent hover:bg-accentd text-accentfg font-display font-bold text-[16px] rounded-[14px] py-4 shadow-[0_14px_30px_-12px_rgba(34, 197, 94,.6)] transition-all active:scale-[.99] cursor-pointer disabled:opacity-60 disabled:cursor-wait">
                   {busyMail ? "Sending code..." : tab === "login" ? "Send Login Code" : "Send Sign-Up Code"}
                 </button>
                 <p className="text-center font-mono text-[10.5px] tracking-[.08em] text-dim -mt-1">
@@ -284,11 +335,11 @@ export default function AuthModal() {
                     value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} autoFocus />
                 </div>
                 <button type="submit" disabled={busyMail}
-                  className="mt-1 w-full bg-accent hover:bg-accentd text-white font-display font-bold text-[16px] rounded-[14px] py-4 shadow-[0_14px_30px_-12px_rgba(180, 96, 44,.6)] transition-all active:scale-[.99] cursor-pointer disabled:opacity-60 disabled:cursor-wait">
+                  className="mt-1 w-full bg-accent hover:bg-accentd text-accentfg font-display font-bold text-[16px] rounded-[14px] py-4 shadow-[0_14px_30px_-12px_rgba(34, 197, 94,.6)] transition-all active:scale-[.99] cursor-pointer disabled:opacity-60 disabled:cursor-wait">
                   {busyMail ? "Verifying..." : "Verify & Continue"}
                 </button>
                 <div className="flex items-center justify-between font-mono text-[11px] font-bold tracking-[.08em]">
-                  <button type="button" onClick={() => { setStep("form"); setCode(""); }}
+                  <button type="button" onClick={() => { setStep("form"); setCode(""); mailCh.current = ""; }}
                     className="text-rust hover:text-accent cursor-pointer">Change email</button>
                   <button type="button" onClick={resend} disabled={resendIn > 0 || busyMail}
                     className="text-cocoa hover:text-rust transition-all cursor-pointer disabled:text-dim disabled:cursor-not-allowed">
@@ -316,14 +367,9 @@ export default function AuthModal() {
 
             <p className="text-center text-[12.5px] text-cocoa leading-[1.7] mt-8">
               By logging in or signing up, you agree to our{" "}
-              <button onClick={() => toast("Demo preview - Terms page is on the roadmap.")} className="text-rust font-semibold hover:underline cursor-pointer">Terms &amp; Conditions</button>{" "}
+              <button onClick={() => toast("Terms page is on the roadmap - nothing to accept yet.")} className="text-rust font-semibold hover:underline cursor-pointer">Terms &amp; Conditions</button>{" "}
               and{" "}
-              <button onClick={() => toast("Demo preview - Privacy page is on the roadmap.")} className="text-rust font-semibold hover:underline cursor-pointer">Privacy Policy</button>.
-            </p>
-            <p className="text-center font-mono text-[10px] text-dim mt-3">
-              {googleConfigured()
-                ? "Google sign-in is live - your profile stays in this browser, nothing is sent to a cyrus server"
-                : "demo auth - everything stays in your browser, nothing is sent anywhere"}
+              <button onClick={() => toast("Privacy page is on the roadmap - nothing to accept yet.")} className="text-rust font-semibold hover:underline cursor-pointer">Privacy Policy</button>.
             </p>
           </div>
         </div>

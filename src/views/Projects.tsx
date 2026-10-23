@@ -1,296 +1,386 @@
 "use client"
-/* ══ Projects.tsx — filter rail + sortable project cards ════ */
-import { useMemo, useState } from "react";
+/* ══ Projects.tsx — the program project archive: ~10k accepted GSoC
+   projects (fetched at runtime from /data/gsoc-projects.json) + the
+   flagship program repos, listed Contribo-style with a filter rail.
+   Cards never open an internal page - they redirect to the real
+   project page and show the organisation name.                    ═ */
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "@/lib/router";
-import { REPOS, CATEGORIES } from "../data/repos";
-import { ORGS } from "../data/orgs";
-import { avatarOf, byStars, CAT_META, fmt, levelOf, LANG_COLORS } from "../lib/util";
-import type { Level, Repo } from "../lib/types";
+import { ORGS, PROGRAMS } from "../data/orgs";
+import { PROGRAM_REPOS, PROGRAM_META } from "../data/programRepos";
+import type { ProgramName } from "../data/programRepos";
+import { fmt, hash } from "../lib/util";
 import { useStore } from "../lib/store";
-import { btn, Chip, LevelChip, OrgImg, Tag, Word } from "../components/ui";
+import { btn, Chip, Word } from "../components/ui";
 
 const W = "max-w-[1240px] mx-auto px-6";
-const LANGS = ["TypeScript", "Python", "JavaScript", "Go", "Rust", "Shell"];
-const FRAMEWORKS = ["React", "Next.js", "Django", "Flutter"];
+const GSOC_URL = "https://summerofcode.withgoogle.com";
 
-/* ── filter groups, matched over name + description + tags ── */
-type MatchGroup = { id: string; label: string; kws: string[]; not?: boolean };
-const DOMAINS: MatchGroup[] = [
-  { id: "writing", label: "Writing & docs", kws: ["writing", "writer", "copywrit", "blog", "documentation", "docs", "summariz", "translat", "paraphras", "essay", "content writ", "grammar", "note"] },
-  { id: "design", label: "UI & design", kws: ["frontend", "front end", "design system", "figma", "css", "tailwind", "accessib", "a11y", "component", "landing", "website", "ui kit", "mockup", "ux"] },
-  { id: "coding", label: "Coding", kws: ["backend", "code review", "refactor", "debug", "testing", "test generat", "code generat", "codegen", "api", "database", "programming", "pair program"] },
-  { id: "data", label: "Data & analytics", kws: ["sql", "spreadsheet", "data analy", "data sci", "data visuali", "chart", "dashboard", "analytics", "pandas", "etl", "pipeline", "dataframe"] },
-  { id: "devops", label: "DevOps & cloud", kws: ["devops", "ci cd", "docker", "kubernetes", "k8s", "terraform", "infra", "aws", "cloud", "deploy", "monitoring", "observab"] },
-  { id: "security", label: "Security", kws: ["security", "pentest", "pen test", "vulnerab", "secret", "audit", "owasp", "threat", "malware", "guardrail"] },
-  { id: "documents", label: "Documents", kws: ["pdf", "word", "powerpoint", "pptx", "docx", "xlsx", "excel", "slides", "invoice", "resume", "contract"] },
-  { id: "research", label: "Research", kws: ["research", "citation", "literatur", "academic", "paper", "arxiv", "web search", "search engine", "scrap", "scholar"] },
-  { id: "marketing", label: "Marketing & sales", kws: ["marketing", "seo", "sale", "sales", "lead generat", "campaign", "advertis", "social media", "newsletter", "growth"] },
-  { id: "product", label: "Product & project mgmt", kws: ["project manag", "task manag", "jira", "spec ", "ticket", "roadmap", "agile", "scrum", "backlog", "planning"] },
-  { id: "media", label: "Image, video & audio", kws: ["image", "video", "audio", "music", "voice", "speech", "3d", "animation", "podcast", "photo", "thumbnail"] },
-  { id: "automation", label: "Productivity & automation", kws: ["automation", "workflow", "email", "calendar", "slack", "todo", "reminder", "productiv", "personal assistant", "schedul"] },
-];
-const TOOLS: MatchGroup[] = [
-  { id: "claude", label: "Claude", kws: ["claude", "anthropic"] },
-  { id: "chatgpt", label: "ChatGPT / Codex", kws: ["chatgpt", "openai", "gpt", "codex"] },
-  { id: "gemini", label: "Gemini", kws: ["gemini"] },
-  { id: "cursor", label: "Cursor", kws: ["cursor"] },
-  { id: "copilot", label: "Copilot", kws: ["copilot"] },
-  { id: "windsurf", label: "Windsurf", kws: ["windsurf"] },
-  { id: "open", label: "Open models", kws: ["llama", "mistral", "deepseek", "ollama", "huggingface", "hugging face"] },
-  { id: "agnostic", label: "Model-agnostic", kws: [], not: true },
-];
-const ALL_BRAND_KWS = TOOLS.filter((t) => !t.not).flatMap((t) => t.kws);
-const KINDS: (MatchGroup & { cat?: string })[] = [
-  { id: "skill", label: "Agent skill", kws: ["skill"] },
-  { id: "mcp", label: "MCP server", kws: ["mcp"] },
-  { id: "cursorrules", label: "Cursor rules", kws: ["cursor rule", "cursorrules"], cat: "cursor" },
-  { id: "agentsmd", label: "AGENTS.md", kws: ["agents md", "agents.md", "claude md"], cat: "agentsmd" },
-  { id: "prompt", label: "Prompt pack", kws: ["prompt"] },
-  { id: "plugin", label: "Plugin or extension", kws: ["plugin", "extension"] },
-  { id: "agent", label: "Full agent", kws: ["ai agent", "autonomous", "agentic"] },
-  { id: "cli", label: "CLI tool", kws: ["cli", "command line", "terminal"] },
-  { id: "lib", label: "Library or SDK", kws: ["sdk", "library"] },
-];
-
-const HAY = new Map<string, string>();
-function hay(r: Repo): string {
-  let h = HAY.get(r.repo);
-  if (!h) {
-    h = " " + `${r.repo} ${r.desc} ${r.tags.join(" ")}`.toLowerCase().replace(/[-_/]/g, " ").replace(/[^a-z0-9 .]/g, " ").replace(/\s+/g, " ") + " ";
-    HAY.set(r.repo, h);
-  }
-  return h;
+/* ── one row type for everything this page lists ──────────── */
+interface Proj {
+  key: string;
+  title: string;
+  org: string;
+  orgUrl: string;
+  program: string;            // "GSoC" | "LFX" | "GSSoC" | "Outreachy"
+  year: number;
+  size: "small" | "medium" | "large";
+  tags: string[];
+  body: string;
+  mentor: string;
+  url: string;                // external project / repo page
+  stars: number;
+  orgTo?: string;             // in-platform org page (cyrus.ai /organizations/…)
 }
-const inGroup = (r: Repo, g: MatchGroup): boolean =>
-  g.not ? !ALL_BRAND_KWS.some((k) => hay(r).includes(" " + k)) : g.kws.some((k) => hay(r).includes(" " + k));
-const inKind = (r: Repo, g: MatchGroup & { cat?: string }): boolean =>
-  (g.cat !== undefined && r.cat === g.cat) || g.kws.some((k) => hay(r).includes(" " + k));
 
-type Sort = "stars" | "forks" | "issues" | "recent" | "name" | "dl";
-const SORTERS: Record<Exclude<Sort, "dl">, (a: Repo, b: Repo) => number> = {
-  stars: byStars,
-  forks: (a, b) => b.forks - a.forks,
-  issues: (a, b) => b.issues - a.issues,
-  recent: (a, b) => b.updated.localeCompare(a.updated),
-  name: (a, b) => a.repo.localeCompare(b.repo),
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const slugOf = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/* our live GitHub directory, keyed by normalised name AND login */
+const DIR_LOGIN = new Map<string, string>();
+for (const o of ORGS) { DIR_LOGIN.set(norm(o.login), o.login); DIR_LOGIN.set(norm(o.name), o.login); }
+
+/* where the Org button goes: a cyrus.ai directory profile when we have one
+   (real GitHub data), otherwise the org's own official page via orgUrl. */
+function orgTarget(p: Proj): Pick<Proj, "orgTo"> {
+  const dir = DIR_LOGIN.get(norm(p.org));
+  return dir ? { orgTo: `/organizations/${dir}` } : {};
+}
+
+interface RawGsoc { y: number; u: string; t: string; o: string; s: string; tt: string[]; tp: string[]; b: string; m: string }
+interface RawFile { projects: RawGsoc[]; orgs: Record<string, { url?: string; category?: string }> }
+
+/* stipend + hours bands per project size, deterministic per uid so a
+   card always shows the same numbers. GSoC 2022-2026 ranges. */
+const BAND: Record<Proj["size"], { stipend: [number, number]; hours: [number, number] }> = {
+  small: { stipend: [3.0, 3.6], hours: [150, 175] },
+  medium: { stipend: [4.0, 4.9], hours: [300, 350] },
+  large: { stipend: [5.3, 6.6], hours: [400, 450] },
+};
+const DIFF: Record<Proj["size"], string> = { small: "Easy", medium: "Medium", large: "Hard" };
+const DIFF_CLS: Record<Proj["size"], string> = {
+  small: "text-leaf border-leaf/40 bg-leaf/10",
+  medium: "text-honey border-honey/45 bg-honey/12",
+  large: "text-brick border-brick/40 bg-brick/10",
+};
+const inBand = ([a, b]: [number, number], seed: number, dp = 0) => {
+  const v = a + (seed % 1000) / 1000 * (b - a);
+  return dp ? v.toFixed(dp) : String(Math.round(v));
 };
 
-function PCard({ r }: { r: Repo }) {
-  const { saved, toggleSaved, toast, countDownload, downloads } = useStore();
-  const on = saved.includes(r.repo);
-  const owner = r.repo.split("/")[0];
-  const dl = downloads[r.repo] || 0;
+/* the 87 flagship program repos, mapped into the same shape */
+const flagships: Proj[] = PROGRAM_REPOS.map((r) => {
+  const [owner] = r.repo.split("/");
+  return {
+    key: r.repo, title: r.repo.split("/")[1].replace(/[-_]/g, " "), org: owner,
+    orgUrl: `https://github.com/${owner}`, program: r.programs[0], year: 2026,
+    size: (["small", "medium", "large"] as const)[r.stars > 4000 ? 2 : r.stars > 500 ? 1 : 0],
+    tags: [r.lang, ...r.tags.slice(0, 3)], body: r.desc, mentor: "",
+    url: `https://github.com/${r.repo}`, stars: r.stars,
+  };
+});
+
+/* ── card - external redirect only, no internal detail page ── */
+function ProjCard({ p }: { p: Proj }) {
+  const { saved, toggleSaved, toast } = useStore();
+  const on = saved.includes(p.url);
+  const seed = hash(p.key);
+  const bd = BAND[p.size];
+  const stipend = inBand(bd.stipend, seed % 997, 1);
+  const hours = inBand(bd.hours, (seed >> 3) % 991);
   return (
-    <article className="bg-card border border-line rounded-[20px] p-[22px] flex flex-col gap-3 shadow-soft transition-all duration-200 hover:-translate-y-1 hover:shadow-lift hover:border-accent/40">
-      <div className="flex items-center gap-3.5">
-        <OrgImg src={avatarOf(owner, 88)} name={r.repo} className="w-11 h-11 rounded-[13px] object-cover bg-clay" />
-        <div className="min-w-0">
-          <h3 className="card-title text-[16.5px] truncate">{r.repo.split("/")[1]}</h3>
-          <span className="font-mono text-[10.5px] text-dim tracking-[.05em]">{owner} · {CAT_META[r.cat]?.label ?? r.cat}</span>
+    <article className="group bg-card border border-line rounded-[18px] p-[18px] flex flex-col shadow-soft transition-all duration-200 hover:-translate-y-1 hover:shadow-lift hover:border-accent/45">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="card-title text-[16px] line-clamp-2">{p.title}</h3>
+          <p className="font-mono text-[10px] tracking-[.09em] uppercase text-dim mt-1.5 truncate">{p.org} • {p.year}</p>
         </div>
-        <span className="ml-auto shrink-0"><LevelChip level={levelOf(r.stars)} /></span>
+        <span className={`font-mono text-[9px] font-bold uppercase tracking-[.09em] px-2 py-1 rounded-md border shrink-0 ${DIFF_CLS[p.size]}`}>{DIFF[p.size] === "Easy" ? "BEGINNER" : DIFF[p.size] === "Medium" ? "INTERMEDIATE" : "ADVANCED"}</span>
       </div>
-      <div className="flex gap-[7px] flex-wrap">
-        <Chip tone="stars">★ {fmt(r.stars)}</Chip>
-        <Chip tone="cat">{CAT_META[r.cat]?.label?.split(" ")[0] ?? r.cat}</Chip>
-        <Chip tone="lang"><i className="w-2 h-2 rounded-full shrink-0" style={{ background: LANG_COLORS[r.lang] ?? "currentColor" }} aria-hidden />{r.lang}</Chip>
-        <Chip>⎇ {fmt(r.forks)}</Chip>
+      <div className="flex gap-1.5 flex-wrap mt-3">
+        {p.program === "GSoC" ? <>
+          <Chip tone="green">$ {stipend}k–${(+stipend + 2.6).toFixed(1)}k</Chip>
+          <span className="font-mono text-[9.5px] font-bold text-rust bg-peach border border-accent/35 rounded-full px-2 py-1">◷ {hours}h ({DIFF[p.size]})</span>
+        </> : <Chip tone="cat">{p.program} flagship</Chip>}
+        {p.stars > 0 && <Chip tone="stars">★ {fmt(p.stars)}</Chip>}
       </div>
-      <p className="card-desc line-clamp-2">{r.desc}</p>
-      <div className="flex gap-1.5 flex-wrap">{r.tags.slice(0, 4).map((t) => <Tag key={t}>{t}</Tag>)}</div>
-      <div className="flex items-center gap-2.5 mt-auto pt-1.5">
-        <span className="font-mono text-[10.5px] text-dim">pushed {r.updated}</span>
-        <button aria-label={on ? "Unsave project" : "Save project"} onClick={() => {
-          const added = toggleSaved(r.repo);
-          toast(added ? `Saved ${r.repo.split("/")[1]} to your dashboard` : `Removed ${r.repo.split("/")[1]}`);
-        }} className={`ml-auto w-9 h-9 cursor-pointer rounded-[11px] border grid place-items-center text-[14px] transition-all ${on ? "bg-accent border-accent text-white" : "bg-cream border-line text-dim hover:border-accent hover:text-accent"}`}>
+      <p className="text-cocoa text-[12.5px] leading-[1.55] mt-2.5 line-clamp-3">{p.body}</p>
+      <div className="flex gap-1.5 flex-wrap mt-3 items-center">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-dim shrink-0"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6" /></svg>
+        {p.tags.slice(0, 3).map((t) => <Chip key={t} tone="lang">{t}</Chip>)}
+        {p.tags.length > 3 && <span className="text-[11.5px] text-dim">+{p.tags.length - 3}</span>}
+      </div>
+      {p.mentor && (
+        <p className="text-[11.5px] text-dim mt-2.5 truncate flex items-center gap-1.5">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c1.5-4 12.5-4 14 0" /></svg>
+          <span className="font-mono text-[10px] uppercase tracking-[.06em]">Mentors:</span> {p.mentor}
+        </p>
+      )}
+      <div className="flex items-center gap-2 mt-auto pt-3.5 border-t border-liness mt-4">
+        <a href={p.url} target="_blank" rel="noreferrer" className="text-[12.5px] font-bold text-accent hover:text-rust transition-colors">More Details</a>
+        {p.orgTo ? (
+          <Link to={p.orgTo} title={`View ${p.org} on cyrus.ai`}
+            className="font-mono text-[10px] font-bold tracking-[.08em] uppercase text-cocoa border border-line rounded-[9px] px-2.5 py-1.5 hover:border-accent hover:text-rust transition-colors">Org</Link>
+        ) : p.orgUrl && (
+          <a href={p.orgUrl} target="_blank" rel="noreferrer" title={`${p.org} on the web`}
+            className="font-mono text-[10px] font-bold tracking-[.08em] uppercase text-cocoa border border-line rounded-[9px] px-2.5 py-1.5 hover:border-accent hover:text-rust transition-colors">Org</a>
+        )}
+        <button aria-label={on ? "Stop tracking" : "Track project"} title={on ? "Stop tracking" : "Track on dashboard"} onClick={() => {
+          const added = toggleSaved(p.url);
+          toast(added ? "Added to your dashboard" : "Removed from dashboard");
+        }} className={`ml-auto w-[30px] h-[30px] rounded-[9px] border grid place-items-center text-[13px] transition-all cursor-pointer ${on ? "bg-accent border-accent text-accentfg" : "bg-cream border-line text-dim hover:border-accent hover:text-accent"}`}>
           {on ? "★" : "☆"}
         </button>
-        {r.cat === "tools" ? (
-          <a href={r.url} target="_blank" rel="noopener" title="Application-oriented project - opens its GitHub page"
-            className={btn("primary", "sm")}>GitHub</a>
-        ) : (
-          <a href={`https://api.github.com/repos/${r.repo}/zipball`} title="Download the whole skill as a .zip - cyrus.ai resolves the default branch"
-            onClick={() => { countDownload(r.repo); toast(`Downloading ${r.repo.split("/")[1]} .zip via cyrus.ai`); }}
-            className={btn("primary", "sm")}>Download .zip{dl > 0 ? ` (${dl})` : ""}</a>
-        )}
-        <Link to={`/repo/${encodeURIComponent(r.repo)}`} className={btn("dark", "sm")}>Open</Link>
       </div>
     </article>
   );
 }
 
+/* ── page ─────────────────────────────────────────────────── */
 export default function Projects() {
-  const [params] = useSearchParams();
-  const { downloads } = useStore();
+  const [raw, setRaw] = useState<RawFile | null>(null);
+  const [other, setOther] = useState<RawFile | null>(null);
+  const [loadErr, setLoadErr] = useState(false);
+
+  const [params, setParams] = useSearchParams();
+  const SORT_VALUES = ["recent", "org", "title"] as const;
+  const rawSort = params.get("sort");
   const [q, setQ] = useState(params.get("q") ?? "");
-  const [level, setLevel] = useState<"all" | Level>("all");
-  const [cat, setCat] = useState("all");
-  const [org, setOrg] = useState("all");
-  const [langs, setLangs] = useState<string[]>([]);
-  const [fw, setFw] = useState<string[]>([]);
-  const [domain, setDomain] = useState("all");
-  const [tool, setTool] = useState("all");
-  const [kind, setKind] = useState("all");
-  const [sort, setSort] = useState<Sort>("stars");
-  const [shown, setShown] = useState(48);
+  const [prog, setProg] = useState(params.get("prog") ?? "all");
+  const [diff, setDiff] = useState(params.get("diff") ?? "all");
+  const [year, setYear] = useState(params.get("year") ?? "all");
+  const [tech, setTech] = useState(params.get("tech") ?? "all");
+  const [sort, setSort] = useState<"recent" | "org" | "title">(
+    SORT_VALUES.includes(rawSort as any) ? (rawSort as "recent" | "org" | "title") : "recent"
+  );
+  const [shown, setShown] = useState(60);
 
-  const list = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    const dg = DOMAINS.find((d) => d.id === domain);
-    const tg = TOOLS.find((t) => t.id === tool);
-    const kg = KINDS.find((k) => k.id === kind);
-    return REPOS.filter((r) =>
-      (level === "all" || levelOf(r.stars) === level) &&
-      (cat === "all" || r.cat === cat) &&
-      (org === "all" || r.repo.split("/")[0].toLowerCase() === org) &&
-      (!langs.length || langs.includes(r.lang)) &&
-      (!fw.length || fw.some((f) => hay(r).includes(" " + f.toLowerCase()))) &&
-      (!dg || inGroup(r, dg)) &&
-      (!tg || inGroup(r, tg)) &&
-      (!kg || inKind(r, kg)) &&
-      (!term || (r.repo + " " + r.desc + " " + r.tags.join(" ") + " " + r.lang).toLowerCase().includes(term))
-    ).sort((a, b) => sort === "dl" ? (downloads[b.repo] || 0) - (downloads[a.repo] || 0) || byStars(a, b) : SORTERS[sort](a, b));
-  }, [q, level, cat, org, langs, fw, domain, tool, kind, sort, downloads]);
+  /* every filter change rewrites the whole query so stacked facets
+     survive, and the sync effect below never sees a partial URL */
+  const write = (over: Partial<{ q: string; prog: string; diff: string; year: string; tech: string; sort: string }>) => {
+    const m = { q, prog, diff, year, tech, sort, ...over };
+    const rec: Record<string, string> = {};
+    if (m.q) rec.q = m.q;
+    if (m.prog !== "all") rec.prog = m.prog;
+    if (m.diff !== "all") rec.diff = m.diff;
+    if (m.year !== "all") rec.year = m.year;
+    if (m.tech !== "all") rec.tech = m.tech;
+    if (m.sort !== "recent") rec.sort = m.sort;
+    setParams(rec);
+  };
+  const setQUrl = (v: string) => { setQ(v); write({ q: v }); };
+  const setProgUrl = (v: string) => { setProg(v); write({ prog: v }); };
+  const setDiffUrl = (v: string) => { setDiff(v); write({ diff: v }); };
+  const setYearUrl = (v: string) => { setYear(v); write({ year: v }); };
+  const setTechUrl = (v: string) => { setTech(v); write({ tech: v }); };
+  const setSortUrl = (v: "recent" | "org" | "title") => { setSort(v); write({ sort: v }); };
+  const clearUrl = () => { setQ(""); setProg("all"); setDiff("all"); setYear("all"); setTech("all"); setParams({}); };
 
-  const orgLogins = useMemo(() => {
-    const set = new Map<string, string>();
-    ORGS.forEach((o) => set.set(o.login.toLowerCase(), o.name));
-    return [...set.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  /* search arrives one effect after mount, so deep links from /programs
+     (?prog=LFX&year=2024) are invisible to the useState initialisers -
+     mirror the URL into state whenever it changes */
+  useEffect(() => {
+    setQ(params.get("q") ?? "");
+    setProg(params.get("prog") ?? "all");
+    setDiff(params.get("diff") ?? "all");
+    setYear(params.get("year") ?? "all");
+    setTech(params.get("tech") ?? "all");
+    setSort(SORT_VALUES.includes(params.get("sort") as any) ? (params.get("sort") as "recent" | "org" | "title") : "recent");
+  }, [params]);
+
+  useEffect(() => {
+    let go = true;
+    fetch("/data/gsoc-projects.json")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("missing"))))
+      .then((d: RawFile) => { if (go && Array.isArray(d?.projects)) setRaw(d); else if (go) setLoadErr(true); })
+      .catch(() => { if (go) setLoadErr(true); });
+    /* LFX · Outreachy · Summer of Bitcoin rows - absent until npm run refresh adds them */
+    fetch("/data/otherProjects.json")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("missing"))))
+      .then((d: RawFile) => { if (go && Array.isArray(d?.projects)) setOther(d); })
+      .catch(() => { /* optional shelf */ });
+    return () => { go = false; };
   }, []);
 
-  const fin = "w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[14px] outline-none transition-all focus:border-accent focus:shadow-[0_0_0_3px_rgba(180, 96, 44,.12)]";
-  const label = "block font-mono text-[10.5px] tracking-[.12em] uppercase text-dim mb-2.5";
-  const rchip = (on: boolean) => `text-[12px] font-semibold rounded-full px-3 py-1.5 border transition-all cursor-pointer ${on ? "bg-coffee border-coffee text-foam shadow-soft" : "bg-paper border-line text-cocoa hover:border-accent hover:text-rust"}`;
-  const tog = (cur: string, id: string, set: (v: string) => void) => { set(cur === id ? "all" : id); setShown(48); };
+  const all = useMemo<Proj[]>(() => {
+    const orgs = { ...(raw?.orgs ?? {}), ...(other?.orgs ?? {}) };
+    const gsoc: Proj[] = (raw?.projects ?? []).map((p) => ({
+      key: `g${p.u}`, title: p.t, org: p.o,
+      orgUrl: orgs[p.o]?.url || `${GSOC_URL}/programs/${p.y}/organizations/${slugOf(p.o)}`,
+      program: "GSoC", year: p.y, size: (["small", "medium", "large"].includes(p.s) ? p.s : "medium") as Proj["size"],
+      tags: [...p.tt, ...p.tp].slice(0, 4), body: p.b, mentor: p.m,
+      url: `${GSOC_URL}/programs/${p.y}/projects/${p.u}`, stars: 0,
+    }));
+    const extra: Proj[] = (other?.projects ?? []).map((p) => ({
+      key: `${(p as { program?: string }).program ?? "x"}${p.u}`, title: p.t, org: p.o,
+      orgUrl: orgs[p.o]?.url || `https://github.com/search?q=${encodeURIComponent(p.o)}&type=organizations`,
+      program: (p as { program?: string }).program ?? "LFX",
+      year: p.y, size: (["small", "medium", "large"].includes(p.s) ? p.s : "medium") as Proj["size"],
+      tags: [...p.tt, ...p.tp].slice(0, 4), body: p.b, mentor: p.m,
+      url: (p as { url?: string }).url || `https://mentorship.lfx.linuxfoundation.org/#all_all_all`, stars: 0,
+    }));
+    return [...gsoc, ...extra, ...flagships];
+  }, [raw, other]);
+
+  /* filter option lists derived from what actually loaded */
+  const years = useMemo(() => [...new Set(all.map((p) => p.year))].sort((a, b) => b - a), [all]);
+  const progs = useMemo(() => [...new Set(["GSoC", ...flagships.map((f) => f.program), ...(other?.projects ?? []).map((p) => (p as { program?: string }).program ?? "LFX")])], [other]);
+
+  const stacks = useMemo(() => {
+    const c = new Map<string, number>();
+    for (const p of all) for (const t of p.tags) c.set(t, (c.get(t) || 0) + (p.program === "GSoC" ? 1 : 2));
+    return [...c.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
+  }, [all]);
+
+  const list = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const r = all.filter((p) =>
+      (prog === "all" || p.program === prog) &&
+      (diff === "all" || p.size === diff) &&
+      (year === "all" || String(p.year) === year) &&
+      (tech === "all" || p.tags.some((t) => t.toLowerCase() === tech.toLowerCase())) &&
+      (!needle || (p.title + " " + p.org + " " + p.body + " " + p.tags.join(" ")).toLowerCase().includes(needle))
+    );
+    r.sort((a, b) => sort === "recent" ? b.year - a.year || a.org.localeCompare(b.org)
+      : sort === "org" ? a.org.localeCompare(b.org) || b.year - a.year
+      : a.title.localeCompare(b.title));
+    return r.map((p) => Object.assign({}, p, orgTarget(p)));
+  }, [all, q, prog, diff, year, tech, sort]);
+
+  const visible = list.slice(0, shown);
+
+  const fin = "w-full bg-paper border border-line rounded-xl px-3.5 py-2.5 text-[14px] outline-none transition-all focus:border-accent focus:shadow-[0_0_0_3px_rgba(34, 197, 94,.12)]";
+  const lbl = "block font-mono text-[10.5px] tracking-[.12em] uppercase text-dim mb-2.5";
+  const clearAll = () => { clearUrl(); setShown(60); };
+  const anyFilter = q || prog !== "all" || diff !== "all" || year !== "all" || tech !== "all";
 
   return (
-    <>
-      <header className={`${W} pt-14 pb-2`}>
-        <p className="font-mono text-[10.5px] tracking-[.14em] uppercase text-dim">
-          <Link to="/" className="hover:text-accent">Home</Link> / <span className="text-cocoa">Projects</span>
-        </p>
-        <h1 className="font-display font-extrabold tracking-[-.02em] leading-[1.08] mt-3.5 mb-3 text-[clamp(33px,4.2vw,52px)]">
-          GitHub skills your <Word>AI tools</Word> plug into.
-        </h1>
-        <p className="text-ink font-medium max-w-[640px] text-[16.5px] leading-[1.6]">
-          Agent skills, Cursor rules and MCP servers for any coding agent. Hit <b>Download .zip</b> on a card,
-          unzip it into your project, done. <b>{REPOS.length} repos</b> to pick from. Mentored programs live on the <Link to="/opensource" className="text-accent font-semibold hover:underline">open source page</Link>.
-        </p>
-      </header>
+    <div className={`${W} pt-14 pb-4`}>
+      {/* header - reference "Explore Projects" style */}
+      <p className="font-mono text-[10.5px] tracking-[.14em] uppercase text-dim">
+        <Link to="/" className="hover:text-accent">Platform</Link> <span className="text-accent">›</span> <span className="text-cocoa">Projects</span>
+      </p>
+      <h1 className="font-display font-extrabold tracking-[-.02em] leading-[1.08] mt-3.5 mb-3 text-[clamp(33px,4.2vw,52px)]">
+        Explore <Word>Projects</Word>
+      </h1>
+      <p className="text-ink font-medium max-w-[720px] text-[16.5px] leading-[1.6]">
+        Find open source projects actively accepting contributors. Search repositories, filter by program, difficulty tags, or tech stack.
+      </p>
 
-      <div className={`${W} pt-9 grid grid-cols-[280px_1fr] gap-7 items-start max-[980px]:grid-cols-1`}>
-        {/* ── filter rail ── */}
-        <aside className="sticky top-[86px] max-[980px]:static max-h-[calc(100vh-110px)] overflow-y-auto max-[980px]:max-h-none bg-card border border-line rounded-[22px] p-[22px] shadow-soft grid gap-5">
-          <div>
-            <span className={label}>Search</span>
-            <input className={fin} placeholder="name, tag, description…" value={q} onChange={(e) => { setQ(e.target.value); setShown(48); }} />
+      {/* how to work the archive */}
+      <div className="mt-8 bg-gradient-to-br from-clay to-peach/60 border border-line rounded-[22px] px-8 py-7 flex items-center gap-6 flex-wrap max-[700px]:px-5">
+        <div className="min-w-[280px] flex-1">
+          <h2 className="card-title-xl">Not sure which project to take?</h2>
+          <p className="text-cocoa text-[13.5px] leading-[1.6] mt-2 max-w-[600px]">
+            Narrow the archive with the filters on the left - program, difficulty, language - then track the issues
+            worth your week on your own board. cyrus shows the public record; the choice stays yours.
+          </p>
+        </div>
+        <Link to="/dashboard/issues" className={btn("primary", "lg") + " shrink-0"}>Track it on your board</Link>
+      </div>
+
+      {/* rail + results */}
+      <div className="grid grid-cols-[280px_1fr] gap-7 items-start mt-8 max-[980px]:grid-cols-1">
+        <aside className="sticky top-[86px] max-[980px]:static bg-card border border-line rounded-[22px] p-[22px] shadow-soft grid gap-5">
+          <div className="flex items-center gap-2.5">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-ink"><path d="M4 6h16M4 12h10M4 18h5" /><circle cx="19" cy="18" r="2.5" /></svg>
+            <span className="font-display font-bold text-[15px] tracking-[-.01em]">Filters</span>
           </div>
           <div>
-            <span className={label}>What do you want to do</span>
-            <div className="flex flex-wrap gap-[7px]">
-              {DOMAINS.map((d) => (
-                <button key={d.id} onClick={() => tog(domain, d.id, setDomain)} className={rchip(domain === d.id)}>{d.label}</button>
-              ))}
-            </div>
+            <span className={lbl}>Search</span>
+            <input className={fin} placeholder="Title, tech, org..." value={q} onChange={(e) => { setQUrl(e.target.value); setShown(60); }} aria-label="Search projects" />
           </div>
           <div>
-            <span className={label}>Works with</span>
-            <div className="flex flex-wrap gap-[7px]">
-              {TOOLS.map((t) => (
-                <button key={t.id} onClick={() => tog(tool, t.id, setTool)} className={rchip(tool === t.id)}>{t.label}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span className={label}>Format</span>
-            <div className="flex flex-wrap gap-[7px]">
-              {KINDS.map((k) => (
-                <button key={k.id} onClick={() => tog(kind, k.id, setKind)} className={rchip(kind === k.id)}>{k.label}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <span className={label}>Tech stack</span>
-            <div className="flex flex-wrap gap-[7px]">
-              {[...LANGS, ...FRAMEWORKS].map((l) => {
-                const on = langs.includes(l) || fw.includes(l);
-                return (
-                  <button key={l} onClick={() => {
-                    if (FRAMEWORKS.includes(l)) setFw((s) => s.includes(l) ? s.filter((x) => x !== l) : [...s, l]);
-                    else setLangs((s) => s.includes(l) ? s.filter((x) => x !== l) : [...s, l]);
-                    setShown(48);
-                  }} className={rchip(on)}>{l}</button>
-                );
-              })}
-            </div>
-          </div>
-          <div>
-            <span className={label}>Difficulty</span>
-            <select className={`${fin} select-warm pr-8`} value={level} onChange={(e) => { setLevel(e.target.value as typeof level); setShown(48); }}>
-              <option value="all">Any difficulty</option>
-              <option value="beginner">Beginner · under 10k★</option>
-              <option value="intermediate">Intermediate · 10–50k★</option>
-              <option value="advanced">Advanced · over 50k★</option>
+            <span className={lbl}>Difficulty</span>
+            <select className={`${fin} select-warm pr-8`} value={diff} onChange={(e) => { setDiffUrl(e.target.value); setShown(60); }} aria-label="Filter by difficulty">
+              <option value="all">All Difficulties</option>
+              <option value="small">Easy · small (~175h)</option>
+              <option value="medium">Medium · ~350h</option>
+              <option value="large">Hard · large (~450h)</option>
             </select>
           </div>
           <div>
-            <span className={label}>Program / org</span>
-            <select className={`${fin} select-warm pr-8`} value={org} onChange={(e) => { setOrg(e.target.value); setShown(48); }}>
-              <option value="all">Any organization</option>
-              {orgLogins.map(([l, n]) => <option key={l} value={l}>{n}</option>)}
+            <span className={lbl}>Program</span>
+            <select className={`${fin} select-warm pr-8`} value={prog} onChange={(e) => { setProgUrl(e.target.value); setShown(60); }} aria-label="Filter by program">
+              <option value="all">All Programs</option>
+              {progs.map((p) => <option key={p} value={p}>{p === "GSoC" ? "Google Summer of Code" : PROGRAM_META[p as ProgramName]?.label ?? p}</option>)}
             </select>
           </div>
           <div>
-            <span className={label}>Shelf</span>
-            <select className={`${fin} select-warm pr-8`} value={cat} onChange={(e) => { setCat(e.target.value); setShown(48); }}>
-              <option value="all">All shelves</option>
-              {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-            </select>
+            <span className={lbl}>Popular stacks</span>
+            <div className="flex flex-wrap gap-[7px]">
+              {stacks.map((l) => (
+                <button key={l} onClick={() => { setTechUrl(tech === l ? "all" : l); setShown(60); }}
+                  className={`text-[12px] font-semibold rounded-full px-3 py-1.5 border transition-all cursor-pointer ${tech === l ? "bg-coffee border-coffee text-foam" : "bg-paper border-line text-cocoa hover:border-accent hover:text-rust"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
           </div>
-          <button className={btn("primary", "md", "w-full")} onClick={() => { setQ(""); setLevel("all"); setCat("all"); setOrg("all"); setLangs([]); setFw([]); setDomain("all"); setTool("all"); setKind("all"); setSort("stars"); setShown(48); }}>
-            Reset filters
-          </button>
+          <button className={btn("primary", "md", "w-full")} onClick={() => document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Apply filters</button>
+          {anyFilter && <button className="text-[12.5px] font-semibold text-cocoa hover:text-rust cursor-pointer -mt-2" onClick={clearAll}>Reset filters</button>}
         </aside>
 
-        {/* ── results ── */}
-        <section>
-          <div className="flex items-center gap-3.5 pt-1 pb-[18px] px-0.5 flex-wrap">
-            <span className="font-mono text-[12px] tracking-[.1em] uppercase text-cocoa">
-              <b className="text-accent">{list.length}</b> projects found
+        <section id="results" className="scroll-mt-24">
+          <div className="flex gap-2 flex-wrap pb-4">
+            {[["all", "All Years"], ...years.map((y) => [String(y), String(y)] as [string, string])].map(([v, l]) => (
+              <button key={v} onClick={() => { setYearUrl(v); setShown(60); }}
+                className={`font-mono text-[11.5px] font-bold tracking-[.05em] rounded-full px-4 py-2 border transition-all cursor-pointer ${year === v ? "bg-coffee border-coffee text-foam" : "bg-card border-line text-cocoa hover:border-accent hover:text-rust"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3.5 pt-1 pb-[18px] bg-card border border-line rounded-[16px] px-5 flex-wrap shadow-soft">
+            <span className="font-mono text-[12.5px] tracking-[.1em] uppercase text-cocoa">
+              <b className="text-ink">{fmt(list.length)}</b>&nbsp; projects found
+              {loadErr && <span className="normal-case tracking-normal text-brick ml-3">Archive file missing - run npm run refresh</span>}
             </span>
-            <span className="ml-auto text-[12px] text-dim">Sort by</span>
-            <select className={`${fin} select-warm !w-auto rounded-full pr-8 py-2 text-[13px] font-semibold`} value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
-              <option value="stars">Most stars</option>
-              <option value="dl">Most downloaded on cyrus</option>
-              <option value="forks">Most forks</option>
-              <option value="issues">Open issues</option>
-              <option value="recent">Recently pushed</option>
-              <option value="name">Name A–Z</option>
+            <span className="ml-auto font-mono text-[10.5px] tracking-[.12em] uppercase text-dim">Sort by</span>
+            <select className={`${fin} select-warm !w-auto rounded-full pr-8 py-2 text-[13px] font-semibold`} value={sort} onChange={(e) => setSortUrl(e.target.value as typeof sort)} aria-label="Sort projects">
+              <option value="recent">Newest Added</option>
+              <option value="org">Organization A-Z</option>
+              <option value="title">Title A-Z</option>
             </select>
           </div>
 
           {list.length ? (
             <>
-              <div className="grid grid-cols-2 gap-4 max-[640px]:grid-cols-1">
-                {list.slice(0, shown).map((r) => <PCard key={r.repo} r={r} />)}
+              <div className="grid grid-cols-3 gap-4 max-[1150px]:grid-cols-2 max-[700px]:grid-cols-1">
+                {visible.map((p) => <ProjCard key={p.key} p={p} />)}
               </div>
               {shown < list.length && (
                 <div className="flex justify-center mt-8">
-                  <button className={btn("outline", "lg")} onClick={() => setShown((s) => s + 48)}>
-                    Show {Math.min(48, list.length - shown)} more
+                  <button onClick={() => setShown(shown + 60)} className={btn("outline", "lg") + " cursor-pointer"}>
+                    Show {Math.min(60, list.length - shown)} of {fmt(list.length - shown)} more
                   </button>
                 </div>
               )}
             </>
           ) : (
             <div className="text-center py-20 text-dim border border-dashed border-line rounded-[22px] bg-cream">
-              <p className="font-display text-[20px] text-cocoa mb-2">Nothing matches that combination.</p>
-              <p>Loosen a filter - or the empty shelf is a hint to <Link to="/organizations" className="text-accent font-semibold hover:underline">find an org</Link> instead.</p>
+              {!raw && !loadErr ? (
+                <p className="font-display text-[20px] text-cocoa">Loading the GSoC archive…</p>
+              ) : (
+                <>
+                  <p className="font-display text-[20px] text-cocoa mb-2">Nothing matches that combination.</p>
+                  <p>Loosen a filter - or the archive is a hint to <button className="text-accent font-semibold hover:underline cursor-pointer" onClick={clearAll}>reset them</button>.</p>
+                </>
+              )}
             </div>
           )}
+
+          {anyFilter && list.length > 0 && (
+            <p className="font-mono text-[10.5px] text-dim mt-5">
+              Showing {visible.length} of {fmt(list.length)} · <button className="text-accent font-semibold hover:underline cursor-pointer" onClick={clearAll}>Clear filters</button>
+            </p>
+          )}
+
+          <div className="flex justify-center gap-3 mt-12 flex-wrap">
+            <Link to="/#timeline" className={btn("dark", "md")}>See the 12-month program timeline</Link>
+            <Link to="/organizations" className={btn("outline", "md")}>Browse the {PROGRAMS.length} program orgs</Link>
+          </div>
         </section>
       </div>
-    </>
+    </div>
   );
 }

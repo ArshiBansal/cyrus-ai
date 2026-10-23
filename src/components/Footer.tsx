@@ -1,16 +1,18 @@
 "use client"
-/* ══ Footer.tsx — dark coffee footer ════════════════════════ */
+/* ══ Footer.tsx — dark graphite footer ══════════════════════ */
 import { Link } from "@/lib/router";
 import { Logo, Brand } from "./ui";
-import { STATS, fmt, statsLine } from "@/lib/siteStats";
+import { fmt } from "@/lib/siteStats";
+import { CRAWL } from "@/data/crawlStats";
+import { ORGS, PROGRAMS } from "@/data/orgs";
 
 const YEAR = new Date().getFullYear();
 
 const COLS: [string, [string, string][]][] = [
-  ["Explore", [["Organizations", "/organizations"], ["Agent skills", "/projects"], ["Artifacts", "/tools"], ["Hackathons", "/hackathons"], ["Resources", "/resources"]]],
-  ["Programs", [["Nexus Spring of Code", "/programs/nsoc"], ["Google Summer of Code", "/programs/gsoc"], ["Hacktoberfest", "/programs/oct"], ["Outreachy", "/programs/outreachy"], ["LFX Mentorship", "/programs/lfx"], ["All programs", "/opensource"]]],
-  ["Platform", [["Features", "/platform/features"], ["Co-pilot", "/platform/nova"], ["Trust centre", "/platform/trust"], ["How it works", "/platform/how"]]],
-  ["Your space", [["Dashboard", "/dashboard"], ["Saved projects", "/dashboard"], ["Activity", "/dashboard"]]],
+  ["Explore", [["Issue finder", "/issues"], ["Organizations", "/organizations"], ["Skills", "/skills"], ["Projects", "/projects"], ["Programs", "/programs"], ["Sponsors", "/sponsors"], ["Program calendar", "/#timeline"]]],
+  ["Programs", [["Nexus Spring of Code", "/programs/nsoc"], ["Google Summer of Code", "/programs/gsoc"], ["Hacktoberfest", "/programs/oct"], ["Outreachy", "/programs/outreachy"], ["LFX Mentorship", "/programs/lfx"], ["All programs", "/programs"]]],
+  ["Platform", [["Features", "/platform/features"], ["Trust centre", "/platform/trust"], ["How it works", "/platform/how"]]],
+  ["Your space", [["Overview", "/dashboard"], ["My Issues", "/dashboard/issues"], ["My Repositories", "/dashboard/repos"], ["Settings", "/dashboard/settings"]]],
   ["About", [["About us", "/about"], ["Data & methodology", "/about#data"], ["FAQ", "/about#faq"]]],
   ["Legal", [["Privacy policy", "/privacy"], ["Terms of service", "/terms"], ["Cookie policy", "/cookies"], ["Affiliations", "/affiliations"]]],
 ];
@@ -40,10 +42,10 @@ export default function Footer() {
           <div>
             <Link to="/" className="flex items-center gap-2.5 text-foam"><Logo /><Brand /></Link>
             <p className="text-[13.5px] leading-[1.7] mt-3.5 max-w-[300px]">
-              The catalog of open-source programs, company hackathons and the skills, rules, configs and MCP servers that power AI coding agents - with a prep plan for every deadline.
+              Open-source programs, the issues that are actually open in them, and the repository context you need before you touch one.
             </p>
             <p className="font-mono text-[11px] leading-[1.7] mt-3.5 max-w-[300px] text-dimdk">
-              {statsLine()} · {fmt(STATS.orgs)} organization profiles · {STATS.programs} tracked programs
+              {fmt(CRAWL.issues)} open issues indexed · {fmt(ORGS.length)} organization profiles · {PROGRAMS.length} tracked programs
             </p>
           </div>
           {COLS.map(([title, links]) => (

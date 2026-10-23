@@ -1,8 +1,9 @@
 "use client"
 /* ══ ProgramDetail.tsx — one open source program, deep ══════ */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "@/lib/router";
 import { PROGRAMS } from "../data/orgs";
+import { TOPIC_ID_OF, useRoster } from "../lib/programRoster";
 import { PROGRAM_META, PROGRAM_REPOS } from "../data/programRepos";
 import type { ProgramName } from "../data/programRepos";
 import { PROGRAM_DETAILS, programLink } from "../data/programDetails";
@@ -79,6 +80,102 @@ const MetaRow = ({ k, v }: { k: string; v: string }) => (
   </div>
 );
 
+const PAGE = 60;
+
+/* ── every organization that took part, from the real record ── */
+function RosterSection({ id, topicId, name }: { id: string; topicId?: string; name: string }) {
+  const r = useRoster(id, topicId);
+  const [q, setQ] = useState("");
+  const [shown, setShown] = useState(PAGE);
+
+  const hits = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle) return r.orgs;
+    return r.orgs.filter((o) => o.name.toLowerCase().includes(needle) || o.category.toLowerCase().includes(needle));
+  }, [r.orgs, q]);
+
+  if (!r.ready) {
+    return (
+      <section className="bg-card border border-line rounded-[20px] p-6 shadow-soft">
+        <h2 className="panel-h text-[17px]">Organizations</h2>
+        <p className="text-cocoa text-[13px] mt-2">Loading the participation record…</p>
+      </section>
+    );
+  }
+
+  if (!r.orgs.length) {
+    return (
+      <section className="bg-card border border-line rounded-[20px] p-6 shadow-soft">
+        <h2 className="panel-h text-[17px] mb-2">Organizations in {name}</h2>
+        <p className="text-cocoa text-[13px] leading-[1.65]">
+          {name} does not publish a list of the projects or organizations that took part, so there is
+          nothing here we could show you honestly. Its own program page is the only source for that -
+          the button above opens it.
+        </p>
+      </section>
+    );
+  }
+
+  const fromArchive = r.source === "archive";
+  return (
+    <section>
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-3">
+        <div>
+          <h2 className="font-display font-extrabold text-[22px] tracking-[-.02em]">
+            Every organization in <Word>{name}</Word>
+          </h2>
+          <p className="text-cocoa text-[12.5px] mt-1">
+            {r.orgs.length.toLocaleString()} organizations · {fmt(r.projects)}{" "}
+            {fromArchive ? "accepted projects" : "tracked repositories"}
+            {fromArchive && r.years.length > 1 ? <> · {r.years[0]}-{r.years[r.years.length - 1]}</> : null}
+          </p>
+        </div>
+        <span className="font-mono text-[9.5px] uppercase tracking-[.1em] text-dim border border-line rounded-full px-2.5 py-1">
+          {fromArchive ? `from the project archive · ${r.generated}` : "from GitHub topics on their repositories"}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2.5 mb-4">
+        <input value={q} onChange={(e) => { setQ(e.target.value); setShown(PAGE); }} placeholder="Search these organizations"
+          aria-label="Search organizations"
+          className="flex-1 min-w-0 max-w-[340px] bg-card border border-line rounded-xl px-3.5 py-2.5 text-[13.5px] outline-none transition-all focus:border-accent" />
+        <span className="font-mono text-[10.5px] text-dim">{fmt(hits.length)} shown</span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 max-[1080px]:grid-cols-2 max-[620px]:grid-cols-1">
+        {hits.slice(0, shown).map((o) => {
+          const inner = (
+            <>
+              <span className="flex items-center gap-2.5 min-w-0">
+                <OrgImg src={avatarOf(o.login ?? o.name, 64)} name={o.login ?? o.name}
+                  className="w-[26px] h-[26px] rounded-[8px] object-cover bg-clay shrink-0" />
+                <b className="text-[13px] font-semibold truncate">{o.name}</b>
+              </span>
+              <span className="flex items-center gap-2 mt-2 font-mono text-[9.5px] text-dim">
+                <b className="text-accent font-bold">{fmt(o.n)}</b>
+                {fromArchive ? (o.years.length > 1 ? `projects · ${o.years.length} years` : "projects") : "repos with the topic"}
+                {o.category && <span className="truncate">· {o.category}</span>}
+              </span>
+            </>
+          );
+          const cls = "bg-card border border-line rounded-[16px] p-4 block shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40";
+          return o.to.startsWith("/")
+            ? <Link key={o.name} to={o.to} className={cls}>{inner}</Link>
+            : <a key={o.name} href={o.href} target="_blank" rel="noopener" className={cls}>{inner}</a>;
+        })}
+      </div>
+
+      {hits.length > shown && (
+        <button type="button" onClick={() => setShown((s) => s + PAGE * 2)}
+          className={btn("outline", "md", "mt-5")}>
+          Show more · {fmt(hits.length - shown)} left
+        </button>
+      )}
+    </section>
+  );
+}
+
+
 export default function ProgramDetail() {
   const { id } = useParams();
   const p = PROGRAMS.find((x) => x.id === id);
@@ -98,11 +195,11 @@ export default function ProgramDetail() {
     <>
       {/* ── cover banner ── */}
       <header className="relative overflow-hidden bg-coffee">
-        <img src={p.img} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />
+        {p.img && <img src={p.img} alt="" className="absolute inset-0 w-full h-full object-cover opacity-30" />}
         <span aria-hidden className="absolute inset-0 bg-gradient-to-b from-[#0f1012]/55 via-[#0f1012]/75 to-[#0f1012]/95" />
         <div className={`${W} py-14 relative z-[1]`}>
           <p className="font-mono text-[10.5px] tracking-[.14em] uppercase text-foam/55 mb-5">
-            <Link to="/" className="hover:text-white">Home</Link> / <Link to="/organizations" className="hover:text-white">Programs</Link> / <span className="text-foam/80">{p.name}</span>
+            <Link to="/" className="hover:text-white">Home</Link> / <Link to="/programs" className="hover:text-white">Programs</Link> / <span className="text-foam/80">{p.name}</span>
           </p>
           <div className="flex items-center gap-4 flex-wrap">
             <span className="w-14 h-14 rounded-[15px] overflow-hidden shrink-0 bg-white border border-white/25 shadow-soft">
@@ -198,17 +295,28 @@ export default function ProgramDetail() {
             <MonthBar p={p} />
           </section>
 
-          <section className="bg-card border border-line rounded-[20px] p-6 shadow-soft">
-            <h2 className="panel-h text-[17px] mb-1">{d.chartTitle}</h2>
-            <p className="text-cocoa text-[12.5px] mb-5">Program-level totals across recent cycles, blended from organizer reports and archive counts.</p>
-            <YearChart data={d.projectsPerYear} unit={d.chartUnit} />
-          </section>
+          {d.projectsPerYear?.length ? (
+            <section className="bg-card border border-line rounded-[20px] p-6 shadow-soft">
+              <h2 className="panel-h text-[17px] mb-1">{d.chartTitle}</h2>
+              <p className="text-cocoa text-[12.5px] mb-5">Program-level totals across recent cycles, blended from organizer reports and archive counts.</p>
+              <YearChart data={d.projectsPerYear} unit={d.chartUnit} />
+            </section>
+          ) : (
+            <section className="bg-card border border-line rounded-[20px] p-6 shadow-soft">
+              <h2 className="panel-h text-[17px] mb-1">{d.chartTitle}</h2>
+              <p className="text-cocoa text-[13px] leading-[1.65] mt-2">
+                {p.name} publishes no per-cycle project table, so this page shows no chart. The
+                organizer's own page, linked above, is the only source for its numbers.
+              </p>
+            </section>
+          )}
 
-          {shelf.length > 0 && (
-            <section>
+          <RosterSection id={p.id} topicId={TOPIC_ID_OF[p.id]} name={p.name} />
+
+          {shelf.length > 0 && (            <section>
               <div className="flex items-end justify-between gap-4 flex-wrap mb-4">
                 <h2 className="font-display font-extrabold text-[22px] tracking-[-.02em]">Flagship <Word>{p.name}</Word> projects</h2>
-                <Link to="/opensource" className={btn("ghost", "sm")}>Browse all program projects</Link>
+                <Link to="/projects" className={btn("ghost", "sm")}>Browse all program projects</Link>
               </div>
               <div className="grid grid-cols-3 gap-4 max-[980px]:grid-cols-2 max-[640px]:grid-cols-1">
                 {shelf.map((r) => (
@@ -240,7 +348,7 @@ export default function ProgramDetail() {
             <MetaRow k="Eligibility" v={d.eligibility} />
             <MetaRow k="Scale" v={`${p.orgs} · ${p.slots}`} />
             <div className="grid gap-2.5 mt-4">
-              {shelf.length > 0 && <Link to="/opensource" className={btn("primary", "md", "w-full")}>Browse {PROGRAM_META[shelfName as ProgramName].label} projects</Link>}
+              {shelf.length > 0 && <Link to="/projects" className={btn("primary", "md", "w-full")}>Browse {PROGRAM_META[shelfName as ProgramName].label} projects</Link>}
               <Link to="/organizations" className={btn("outline", "md", "w-full")}>View organizations</Link>
               <a href={p.url} target="_blank" rel="noopener" className={btn("dark", "md", "w-full")}>Official website</a>
             </div>

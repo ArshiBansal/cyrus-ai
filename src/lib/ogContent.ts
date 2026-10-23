@@ -4,10 +4,9 @@
    cannot quote a number the site has already refreshed away. Nothing in
    this file may state a fact the record does not carry.                ══ */
 import { REPOS } from "@/data/repos";
-import { PROGRAMS } from "@/data/orgs";
 import type { Program } from "@/lib/types";
 import { REAL_ORGS } from "@/data/realOrgs";
-import { ALL_HACKS, fmt, openHacks, STATS } from "@/lib/siteStats";
+import { fmt, STATS } from "@/lib/siteStats";
 
 export type OgRow = { k: string; v: string };
 
@@ -38,19 +37,19 @@ export function catalogSnapshot(): string {
 
 const SNAPSHOT = `catalog snapshot ${catalogSnapshot()}`;
 
-/** The home card: the three shelves the site is built from, in their real sizes. */
-export function homeCard(on: Date = new Date()): OgCard {
+/** The home card: the shelves the site is built from, in their real sizes. */
+export function homeCard(): OgCard {
   return {
     eyebrow: "Open source, indexed",
     title: ["Find your", "next contribution"],
     rows: [
-      { k: "Projects", v: `${fmt(STATS.repos)} skills, tools and MCP servers` },
-      { k: "Programs", v: `${PROGRAMS.length} tracked, all on the 2026 calendar` },
-      { k: "Hackathons", v: `${fmt(ALL_HACKS.length)} listed, ${openHacks(on)} open now` },
+      { k: "Open issues", v: `${fmt(STATS.issues)} across ${fmt(STATS.issueRepos)} repositories` },
+      { k: "Programs", v: `${STATS.programs} tracked, all on the 2026 calendar` },
+      { k: "Projects", v: `${fmt(STATS.archive)} mentored program projects` },
       { k: "Organizations", v: `${REAL_ORGS.length} profiles from live GitHub data` },
     ],
     foot: `Refreshed nightly from GitHub - ${SNAPSHOT}`,
-    alt: "cyrus.ai - the open-source contribution index: projects, programs, hackathons and organizations.",
+    alt: "cyrus.ai - the open-source contribution index: issues, programs, projects and organizations.",
   };
 }
 

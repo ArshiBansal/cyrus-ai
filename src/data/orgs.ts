@@ -134,6 +134,48 @@ export const PROGRAMS: Program[] = [
       { label: "Hacktoberfest", s: 9, e: 10, c: "#3e7d4f", active: true },
     ],
   },
+  /* ── added October 2026. Every field below is checked against the
+     programme's own page; where a programme is not a contributor
+     fellowship, or pays nothing, the card says so rather than implying
+     a stipend. ── */
+  {
+    id: "24pr", name: "24 Pull Requests", owner: "24pullrequests",
+    img: "/assets/prog/24pr.svg", url: "https://24pullrequests.com",
+    tag: "One pull request a day through December, given back to the projects you use.",
+    pay: "No prize", payNote: "GIFT TO MAINTAINERS",
+    status: "upcoming", window: "Runs 1 - 24 December",
+    orgs: "Any GitHub project", slots: "Open to all",
+    phases: [
+      { label: "Nominations & prep", s: 10.5, e: 11, c: "#2f7d72" },
+      { label: "Contribution drive", s: 11, e: 12, c: "#3e7d4f" },
+    ],
+  },
+  {
+    id: "fossee", name: "FOSSEE Summer Fellowship", owner: "fossee",
+    img: "/assets/prog/fossee.svg", url: "https://fossee.in/fellowship/2026",
+    tag: "IIT Bombay mentored fellowship on FLOSS tooling: Scilab, Python, Oxide and more.",
+    pay: "Unpaid", payNote: "NO HONORARIUM",
+    status: "closed", window: "2026 cycle completed 8 June",
+    orgs: "IIT Bombay tracks", slots: "4,500+ applied in 2026",
+    phases: [
+      { label: "Registration", s: 2, e: 3, c: "#3b6ea5" },
+      { label: "Screening tasks", s: 3, e: 4, c: "#a97b1f" },
+      { label: "Fellowship", s: 4.2, e: 7, c: "#3e7d4f" },
+    ],
+  },
+  {
+    id: "vercel-oss", name: "Vercel Open Source Program", owner: "vercel",
+    img: "/assets/prog/vercel-oss.svg", url: "https://vercel.com/open-source-program",
+    tag: "Platform credits and hosting for maintained projects - a grant for maintainers, not contributors.",
+    pay: "$3,600 credits", payNote: "PER PROJECT / QUARTER",
+    status: "closed", window: "Applications reopen next quarter",
+    orgs: "32 projects in the Winter 2026 cohort", slots: "Project teams",
+    phases: [
+      { label: "Winter cohort", s: 1.5, e: 2.6, c: "#3b6ea5" },
+      { label: "Spring cohort", s: 4.6, e: 5.9, c: "#a97b1f" },
+      { label: "Summer cohort", s: 7.2, e: 8.4, c: "#2f7d72" },
+    ],
+  },
 ];
 
 /* Popular GitHub organizations - login doubles as the official-logo source:

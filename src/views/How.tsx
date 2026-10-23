@@ -1,25 +1,28 @@
 "use client"
 /* ══ How.tsx — /platform/how: three-step method sections ═
-   Step blocks in the style of a best-in-class "how it works" page -
-   StepHead, behind-the-scenes checklist, "your action" band and a
-   mock product panel per step - with the integrations step carrying
-   real GitHub-served org logos.                                 ═ */
+   Find the work, know the season, ship and keep the record. Every number
+   quoted here is the real crawl (src/data/crawlStats.ts) and every panel row
+   is real catalog or program data - no invented product features.        ═ */
 import type { ReactNode } from "react";
 import { Link } from "@/lib/router";
-import { btn, Word, OrgImg } from "../components/ui";
-import { avatarOf } from "../lib/util";
+import { btn, OrgImg } from "../components/ui";
+import { avatarOf, fmt, byStars } from "../lib/util";
 import { W, Pill, StepHead, Behind, YourAction, MockPanel, MockRow, GridBG, PlatCTA, Rule } from "../components/plat";
 import CompanyBand from "../components/CompanyBand";
+import { CRAWL } from "../data/crawlStats";
+import { REPOS } from "../data/repos";
+import { ORGS, PROGRAMS } from "../data/orgs";
+import { ISSUE_STAGES, STAGE_LABEL, STAGE_NOTE } from "../lib/dash/shared";
 
 const D = {
-  gauge: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-8.5 3.5A9.9 9.9 0 0 1 2 12C2 6.5 6.5 2 12 2s10 4.5 10 10a9.9 9.9 0 0 1-1.5 5.5",
-  plug: "M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4",
+  gauge: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 4 4",
+  calendar: "M4 6.5h16v14H4zM8 3v5m8-5v5M4 11h16",
   check: "M4 12.5 10 18.5 20 6",
 };
 
 /* data sources shown as official logos in step 02 */
 const SOURCES: [string, string][] = [
-  ["github", "GitHub API"],
+  ["github", "GitHub REST + search API"],
   ["google", "GSoC program API"],
   ["linuxfoundation", "LFX mentorship API"],
   ["huggingface", "HF org profiles"],
@@ -31,24 +34,6 @@ const SOURCES: [string, string][] = [
   ["openai", "OpenAI org signals"],
   ["microsoft", "Microsoft org signals"],
   ["anthropics", "Anthropic skills reg."],
-];
-
-/* ── step panels ── */
-const SETUP: [string, string][] = [
-  ["Programs you want", "GSoC · LFX · Outreachy · GSSoC · hackathons"],
-  ["Languages you know", "tick your real working stack"],
-  ["Hours per week", "sets project size and deadline load"],
-  ["Target season", "which application window you're racing"],
-  ["Experience level", "new · some · vet - changes the ranking"],
-  ["Dream orgs", "watchlist feeds the matcher directly"],
-  ["Deadline calendar", "every date lands on one dashboard"],
-];
-const WORKSPACE: [string, string][] = [
-  ["Matched orgs", "five shortlists, scored against the archive"],
-  ["Skills to install", "the rule packs and configs those orgs ship"],
-  ["Issues to claim", "first-timer and good-first-issue signals per org"],
-  ["Open deadlines", "sorted soonest-first, refreshed fortnightly"],
-  ["Required actions", "the next single step, ticked off when done"],
 ];
 
 function Step({ step, label, d, tone, h2, sub, behind, action, panel, flip }: {
@@ -70,42 +55,51 @@ function Step({ step, label, d, tone, h2, sub, behind, action, panel, flip }: {
 }
 
 export default function How() {
+  const top = REPOS.slice().sort(byStars).slice(0, 5);
+  const windows = PROGRAMS.slice(0, 5);
   return (
     <div className="relative">
       <GridBG pos="50% 12%" />
       <div className="relative">
         <header className={`${W} pt-[64px] text-center`}>
           <Pill center>Platform · How it works</Pill>
-          <h1 className="font-display font-extrabold tracking-[-.02em] leading-[1.05] text-[clamp(36px,4.8vw,58px)] mt-6 max-w-[760px] mx-auto">
-            From empty tabs to a <Word>merged PR.</Word>
+          <h1 className="font-display font-extrabold tracking-[-.02em] leading-[1.05] text-[clamp(36px,4.8vw,58px)] mt-6 max-w-[780px] mx-auto">
+            From an open issue to a merged pull request.
           </h1>
-          <p className="text-cocoa text-[16.5px] leading-[1.7] max-w-[600px] mx-auto mt-5">
-            Three steps, no ceremony. cyrus takes you from "I should ship something this season"
-            to a tracked shortlist, a credible profile and a submitted application.
+          <p className="text-cocoa text-[16.5px] leading-[1.7] max-w-[580px] mx-auto mt-5">
+            Three moves: find work that is really open, know which season you are in, keep the record
+            yourself. No resume upload, no onboarding call.
           </p>
           <div className="flex gap-3 justify-center flex-wrap mt-8">
-            <Link to="/dashboard" className={btn("dark", "lg")}>Start step one</Link>
-            <Link to="/platform/features" className={btn("outline", "lg")}>What's on the platform</Link>
+            <Link to="/skills" className={btn("dark", "lg")}>Browse the catalog</Link>
+            <Link to="/platform/features" className={btn("outline", "lg")}>What is on the platform</Link>
           </div>
         </header>
 
         <Rule />
 
         {/* STEP 01 */}
-        <Step step="01" label="Assess & configure" d={D.gauge} tone="rust"
-          h2="Start with your stack."
-          sub="Five fields describe every contributor: what you want to do, what you build with, how much time you have, which season you're racing, and how far in you are. cyrus turns that into a working board in under a minute - no resume upload, no onboarding call."
+        <Step step="01" label="Find work that is open" d={D.gauge} tone="rust"
+          sub={`One place to search public GitHub data: ${fmt(CRAWL.issues)} open issues from ${fmt(CRAWL.reposWithIssues)} repositories, ${fmt(CRAWL.catalogRepos)} catalogued projects in ${CRAWL.languages} languages, and ${fmt(CRAWL.orgs)} organizations with a profile of their own. Filter it, then open the thread on GitHub before you start work.`}
+          h2="Start from what is actually open."
           behind={[
-            "Builds your saved board and shelf grouping",
-            "Maps your languages to the catalog's 1,500+ repos",
-            "Scores every archived org against your stack",
-            "Pulls the live deadline calendar for your season",
-            "Establishes a readiness baseline you can beat",
+            `Issues crawled from ${fmt(CRAWL.reposWithIssues)} active repositories on ${CRAWL.crawledAt}`,
+            `Beginner-labelled work surfaced separately (${fmt(CRAWL.beginnerLabelled)} issues)`,
+            "Every repository page shows the README, guidelines and open work",
+            "Organization pages carry their program history and flagship repos",
+            "GitHub stays the source of truth - each row links to the live thread",
           ]}
-          action="Open the dashboard, pick your goal and tick your languages. Thirty seconds, and the matcher has everything it needs."
+          action="Search by language, label or organization. Nothing needs an account, and every result links straight to GitHub."
           panel={
-            <MockPanel title="Setup wizard" label="Step 1 of 7 shown live on your board">
-              {SETUP.map(([b, p], i) => <MockRow key={b} n={i + 1} tone="rust"><b className="block">{b}</b><span className="block text-[12px] font-medium text-dim mt-0.5">{p}</span></MockRow>)}
+            <MockPanel title="Project archive" label="Ranked by stars, straight from the catalog">
+              {top.map((r, i) => (
+                <MockRow key={r.repo} n={i + 1} tone="rust">
+                  <b className="block">{r.repo.split("/")[1]}</b>
+                  <span className="block text-[12px] font-medium text-dim mt-0.5 truncate">
+                    {fmt(r.stars)} stars · {fmt(r.issues)} open issues · {r.lang}
+                  </span>
+                </MockRow>
+              ))}
             </MockPanel>
           }
         />
@@ -113,26 +107,35 @@ export default function How() {
         <Rule />
 
         {/* STEP 02 - mirrored */}
-        <Step step="02" label="Connect your world" d={D.plug} tone="leaf" flip
-          h2="Point it at the orgs you care about."
-          sub="cyrus doesn't ask for tokens to private data - it reads the public web you already browse. One optional Google or GitHub sign-in personalises the board; after that, the platform is already wired to the sources that decide your season."
+        <Step step="02" label="Know the season" d={D.calendar} tone="leaf" flip
+          h2="Work the calendar, not the guesswork."
+          sub={`${PROGRAMS.length} funded or mentored programs are tracked with their published application, selection and coding windows, and the organizations tied to them. The archive of accepted projects from the last five years tells you what those orgs actually shipped.`}
           behind={[
-            "Read-only public data - stars, issues, program rosters",
-            "Every org profile served with its official GitHub avatar",
-            "Nothing you save ever leaves your browser",
+            "Program pages list stipends, windows and participating orgs",
+            "Accepted-project archive lets you read a real proposal before writing one",
+            "Organization profiles show which programs a project has joined",
+            "Read-only public data: no tokens, no private repositories",
           ]}
-          action="Sign in with Google or GitHub if you want a greeted dashboard; follow five orgs and the mentor finder starts working."
+          action="Pick the season you are aiming at and read two or three accepted projects from the org you want."
           panel={
-            <MockPanel title="Connected sources" label="Official orgs, live avatars from GitHub">
-              <div className="grid grid-cols-3 gap-2.5 max-[520px]:grid-cols-2">
-                {SOURCES.map(([login, label]) => (
-                  <div key={login} className="flex items-center gap-2.5 bg-paper border border-line rounded-[14px] px-3 py-2.5 shadow-soft min-w-0">
-                    <OrgImg src={avatarOf(login, 64)} name={login} className="w-[26px] h-[26px] rounded-[8px] object-cover bg-sand shrink-0" />
+            <MockPanel title="Program windows" label="Live status on the contributor calendar">
+              {windows.map((p, i) => (
+                <MockRow key={p.id} n={i + 1} tone="leaf">
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <OrgImg src={avatarOf(p.owner, 48)} name={p.owner} className="w-[22px] h-[22px] rounded-[7px] object-cover bg-sand shrink-0" />
                     <span className="min-w-0">
-                      <b className="block text-[12px] font-bold text-ink truncate">{login}</b>
-                      <span className="block text-[10px] text-dim truncate">{label}</span>
+                      <b className="block truncate">{p.name}</b>
+                      <span className="block text-[12px] font-medium text-dim mt-0.5 truncate">{p.window}</span>
                     </span>
-                  </div>
+                  </span>
+                </MockRow>
+              ))}
+              <div className="grid grid-cols-3 gap-2 pt-3">
+                {SOURCES.slice(0, 6).map(([login, label]) => (
+                  <span key={login} title={label} className="flex items-center gap-2 bg-paper border border-line rounded-[12px] px-2.5 py-2 min-w-0">
+                    <OrgImg src={avatarOf(login, 48)} name={login} className="w-[18px] h-[18px] rounded-[6px] object-cover bg-sand shrink-0" />
+                    <span className="text-[10px] text-dim truncate">{login}</span>
+                  </span>
                 ))}
               </div>
             </MockPanel>
@@ -142,19 +145,25 @@ export default function How() {
         <Rule />
 
         {/* STEP 03 */}
-        <Step step="03" label="Turn a shortlist into a merged PR" d={D.check} tone="honey"
-          h2="Work the board, not the tabs."
-          sub="This is where seasons are actually won: five orgs on your watchlist, the exact skills their maintainers use, starter issues you can claim this week, and a checklist that ticks itself as you go. Co-pilot answers the questions in between without ever leaving the index."
+        <Step step="03" label="Ship and keep the record" d={D.check} tone="honey"
+          h2="One board, four stages."
+          sub="The board is yours: the issues you take move through Saved, Interested, Working on it and Completed, and the repositories you follow sit next to them with their stars, open issues and last update. It is stored in your browser first, and mirrored to your account only when you sign in."
           behind={[
-            "Watchlist statuses track researching › preparing › applied",
-            "Mentor finder surfaces handles and live channels",
-            "Proposal drafts borrow structure from 5 years of accepted projects",
-            "Deadline clashes get flagged before you overcommit",
+            "Paste a GitHub issue URL and it is tracked with its live title and labels",
+            "Issues untouched for 90 days are flagged before you commit an evening",
+            "The overview page tells you what needs you, derived from your own rows",
+            "Export or delete everything the board remembers, from Settings",
+            `Nothing is ever claimed on your behalf - assignments stay GitHub's to confirm`,
           ]}
-          action="Advance one org a day. When every row on the workspace is green, hit submit - the calendar already knows when."
+          action="Track one issue today and advance it when you open the pull request. The board keeps the dates; GitHub keeps the record."
           panel={
-            <MockPanel title="Contribution workspace" label="Your board, day 21 of the season">
-              {WORKSPACE.map(([b, p], i) => <MockRow key={b} n={i + 1} tone="honey"><b className="block">{b}</b><span className="block text-[12px] font-medium text-dim mt-0.5">{p}</span></MockRow>)}
+            <MockPanel title="Your board" label="The four stages every tracked issue sits in">
+              {ISSUE_STAGES.map((s, i) => (
+                <MockRow key={s} n={i + 1} tone="honey">
+                  <b className="block">{STAGE_LABEL[s]}</b>
+                  <span className="block text-[12px] font-medium text-dim mt-0.5">{STAGE_NOTE[s]}</span>
+                </MockRow>
+              ))}
             </MockPanel>
           }
         />
@@ -163,8 +172,8 @@ export default function How() {
 
         <section className={`${W} mt-[54px] pb-6 text-center`}>
           <p className="text-cocoa text-[14.5px] leading-[1.7] max-w-[560px] mx-auto">
-            That's the whole method - assess, connect, ship. The platform behind each step is
-            documented on the features and trust pages.
+            That is the whole method - find, season, ship. The data behind each step is documented
+            on the features and trust pages, and {fmt(ORGS.length)} organizations are profiled today.
           </p>
           <PlatCTA to="/platform/features" label="Explore platform features" also={["/platform/trust", "See how we verify data"]} />
         </section>

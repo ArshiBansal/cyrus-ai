@@ -7,9 +7,8 @@ import { Link } from "@/lib/router";
 import { btn, Word } from "../components/ui";
 import { fmt } from "../lib/util";
 import { REPOS } from "../data/repos";
-import { ORGS } from "../data/orgs";
-import { HACKS } from "../data/hackathons";
-import { RESOURCES } from "../data/resources";
+import { ORGS, PROGRAMS } from "../data/orgs";
+import { CRAWL } from "../data/crawlStats";
 import { W, Pill, Ico, Check, CenterHead, GridBG, PlatCTA, Rule } from "../components/plat";
 import CompanyBand from "../components/CompanyBand";
 
@@ -33,8 +32,8 @@ const VERIFIED: [string, string, string, number, string, string][] = [
 const FOUNDATIONS: [string, string, string][] = [
   ["scale", "Ranking honesty", "Stars first, always shown beside forks, open issues and last push - so a dormant 200k-star repo can't pretend otherwise."],
   ["badge", "Derived difficulty", "Beginner under 10k stars, intermediate to 50k, advanced above. Labels come from the data, never from a claim in a README."],
-  ["layers", "Official logos only", "Every org avatar is served straight from GitHub's own CDN. Hackathon covers are generated gradients - no copied artwork anywhere."],
-  ["lock", "Local-only sessions", "Sign-in, saved repos, watchlists and match profiles live in your browser's localStorage. There is no user database to breach."],
+  ["layers", "Official logos only", "Every org avatar is served straight from GitHub's own CDN. Program covers are our own generated SVG artwork - no copied branding anywhere."],
+  ["lock", "Your board stays yours", "Demo sign-in keeps saved issues and repositories in your browser's localStorage. With a real session, they sync to one private row keyed by your account - no password, no stored access token, no tracking pixel."],
   ["eye", "Labelled estimates", "When an API is rate-limited, pages fall back to deterministic estimates and say so in plain words on the card."],
   ["shield", "Independent index", "Not affiliated with GitHub, Google or Anthropic. If a snapshot mislabels your project, we fix it on the next regeneration."],
 ];
@@ -42,8 +41,8 @@ const FOUNDATIONS: [string, string, string][] = [
 const SOURCES: [string, string, string][] = [
   ["GitHub REST API", "Every 14 days", "Stars, forks, open issues, language, license and last push for all " + fmt(REPOS.length) + " catalog repos and " + fmt(ORGS.length) + " org profiles."],
   ["GSoC + mentorship APIs", "Each season window", "Accepted-project records for GSoC, LFX, Outreachy and Summer of Bitcoin - titles, orgs, stacks, sizes, mentors."],
-  ["Official event pages + Devpost", "Every 14 days", "Dates, prizes and rules for all " + HACKS.length + " tracked hackathons; estimates are marked as estimates."],
-  ["Company learning docs", "Monthly pass", "Provider pages for " + RESOURCES.length + " courses, docs and labs are re-checked before the shelf ships."],
+  ["GitHub search API (issues)", `Crawled ${CRAWL.crawledAt}`, fmt(CRAWL.issues) + " open issues read live out of " + fmt(CRAWL.reposWithIssues) + " catalog repositories - title, labels, age and the thread URL. Only issues GitHub still reports open make the cut."],
+  ["Program organizer pages", "Each season window", "Application and coding windows for all " + PROGRAMS.length + " tracked programs are re-read from the organizer's own site; anything unpublished is marked as an estimate."],
 ];
 
 export default function Trust() {
@@ -66,7 +65,7 @@ export default function Trust() {
             </div>
             <div className="flex gap-2.5 ml-auto flex-wrap">
               <Link to="/about#data" className={btn("dark", "sm")}>View methodology</Link>
-              <Link to="/opensource" className={btn("outline", "sm")}>Open the archive</Link>
+              <Link to="/projects" className={btn("outline", "sm")}>Open the archive</Link>
             </div>
           </div>
         </section>
@@ -138,10 +137,10 @@ export default function Trust() {
             <div className="grid grid-cols-5 gap-6 text-center max-[900px]:grid-cols-2 max-[520px]:grid-cols-1">
               {[
                 [fmt(REPOS.length), "catalog repos"],
+                [fmt(CRAWL.issues), "open issues crawled"],
                 ["6,682", "archive projects"],
                 [String(ORGS.length), "org profiles"],
-                [String(HACKS.length), "hackathons checked"],
-                [String(RESOURCES.length), "resources re-verified"],
+                [String(PROGRAMS.length), "programs tracked"],
               ].map(([v, l]) => (
                 <div key={l}>
                   <b className="font-mono font-bold text-[clamp(22px,2.6vw,32px)] tracking-[-.02em] text-white block">{v}</b>

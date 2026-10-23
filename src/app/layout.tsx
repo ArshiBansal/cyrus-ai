@@ -2,7 +2,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import Shell from "@/components/Shell";
-import { fmt, statsLine, STATS } from "@/lib/siteStats";
+import { statsLine } from "@/lib/siteStats";
 import { SITE_ORIGIN } from "@/lib/seo";
 import "./globals.css";
 
@@ -30,18 +30,23 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/apple-touch-icon.png",
+  },
   title: {
     default: "cyrus.ai - find your open-source contribution",
     template: "%s · cyrus.ai",
   },
   description:
-    `${statsLine()} - skills, Cursor rules, AGENTS.md configs and MCP servers ranked by stars, ${STATS.programs} tracked open-source programs with a timeline of every contribution window, and ${fmt(STATS.orgs)} organization profiles.`,
-  keywords: ["open source", "GSoC", "NSOC", "hackathons", "AI agents", "MCP servers", "Cursor rules", "AGENTS.md", "agent skills"],
+    `${statsLine()} - every issue is the real GitHub one, with its labels, its age and the repository it belongs to, so a contribution can be picked on evidence rather than on a wishlist.`,
+  keywords: ["open source", "good first issues", "GSoC", "MLH Fellowship", "Hacktoberfest", "NSOC", "GitHub contributors", "open source programs"],
   openGraph: {
     type: "website",
     siteName: "cyrus.ai",
     title: "cyrus.ai - the developer-program platform",
-    description: `${statsLine(new Date())} in one self-refreshing catalog.`,
+    description: `${statsLine()} in one self-refreshing index.`,
     url: SITE,
   },
   twitter: { card: "summary_large_image", title: "cyrus.ai", description: "The developer-program platform." },
@@ -49,10 +54,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5efe7" },
-    { media: "(prefers-color-scheme: dark)", color: "#221a13" },
-  ],
+  /* dark graphite is the default mode now, so the browser chrome follows
+     it; a visitor who switches to light gets the cool paper on next paint. */
+  themeColor: "#0e0f10",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -60,10 +64,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${jakarta.variable} ${inter.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        {/* keep the stored theme out of the first paint */}
+        {/* dark is the default, so only an explicit stored "light" adds a class;
+           this keeps the stored choice out of the first paint */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("agenthub.theme");if(t&&JSON.parse(t)==="dark")document.documentElement.classList.add("dark");}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("agenthub.theme");if(t&&JSON.parse(t)==="light")document.documentElement.classList.add("light");}catch(e){}`,
           }}
         />
       </head>

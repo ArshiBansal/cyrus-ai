@@ -127,3 +127,38 @@ By participating you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 Found a problem with how the repo is run?
 [SECURITY.md](SECURITY.md) covers vulnerabilities; anything else can go to the
 maintainer through GitHub.
+
+
+## Workflow quick reference
+
+### Labels and issue types
+
+Check the labels on an issue before volunteering. Common areas to look for include `bug`, `enhancement`, `seo`, `performance`, and `accessibility`. Use the data correction form for inaccurate catalog information and include a primary source. Use a blank issue if none of the available forms fits.
+
+### Claim comment
+
+When asking to be assigned, describe your proposed approach as well as your availability. For example, copy and adapt this comment:
+
+> Hi! I would like to work on this issue. My proposed approach is to reproduce the problem, inspect the relevant code, make a focused change, and run the appropriate checks. Does this approach fit the scope? If so, please assign it to me.
+>
+> /assign
+
+Do not start work until the assignment appears on the issue.
+
+### Branch and commit naming
+
+Create a branch only after assignment. Use a short, descriptive name with a type prefix, such as `fix/platform-dropdown`, `feat/program-filter`, `docs/contributor-workflow`, `chore/issue-template-cleanup`, or `test/search-regression`.
+
+Format commit messages as `<type>: <short description>`. Allowed examples include `feat` for features, `fix` for bug fixes, `docs` for documentation, `chore` for maintenance, `test` for tests, and `refactor` for internal restructuring. Examples:
+
+- `docs: clarify the contributor workflow`
+- `chore: add a data correction issue form`
+- `fix: correct program filter behavior`
+
+### Code and accessibility standards
+
+Keep changes focused and follow existing code patterns. Prefer semantic HTML, give form controls accessible labels, ensure interactive elements work with a keyboard and have visible focus indicators, maintain sufficient text contrast, and never rely on color alone to communicate meaning. Respect `prefers-reduced-motion`. Add or update Vitest tests when behavior changes.
+
+### Draft pull requests
+
+A draft pull request is appropriate for incomplete work or early feedback. Explain what is done, what remains, and how to test it. Draft status does not replace the requirement to get assigned before starting work. Keep one issue per pull request, reference it with `Closes #123`, and follow the repository pull request template and required checks.

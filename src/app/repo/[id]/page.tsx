@@ -8,6 +8,10 @@ import { fmt } from "@/lib/siteStats";
 /** the same union the client view resolves /repo/:id against */
 const CATALOG = [...REPOS, ...PROGRAM_REPOS];
 
+export function generateStaticParams() {
+  return CATALOG.map((r) => ({ id: encodeURIComponent(r.repo) }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   // the URL carries "owner%2Fname"; the view decodes it the same way

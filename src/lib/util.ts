@@ -68,15 +68,27 @@ export const rnd = (seed: string, i = 0) => {
 };
 
 /* ── localStorage-backed state ───────────────────────────── */
+/* The prerenderer has no localStorage, so the stored value cannot be read
+   during the first render - a server pass that renders the signed-out board
+   and a client pass that renders the signed-in one is a hydration mismatch.
+   Both passes start at `initial`; the stored value arrives in the first
+   effect, and `ready` tells the caller when that swap has happened so a
+   gate can show a neutral placeholder instead of flashing "sign in". */
 export function useStored<T>(key: string, initial: T) {
-  const [val, setVal] = useState<T>(() => {
-    try { const raw = localStorage.getItem(key); return raw ? (JSON.parse(raw) as T) : initial; }
-    catch { return initial; }
-  });
+  const [val, setVal] = useState<T>(initial);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw != null) setVal(JSON.parse(raw) as T);
+    } catch { /* private mode or a corrupt value: keep the initial */ }
+    setReady(true);
+  }, [key]);
+  useEffect(() => {
+    if (!ready) return;
     try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* private mode */ }
-  }, [key, val]);
-  return [val, setVal] as const;
+  }, [key, val, ready]);
+  return [val, setVal, ready] as const;
 }
 
 export interface User { name: string; provider: string; email?: string; picture?: string }

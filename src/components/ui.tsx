@@ -8,9 +8,9 @@ import type { Level } from "../lib/types";
 export function Logo({ size = 30 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
-      <rect width="100" height="100" rx="27" fill="#241b13" />
-      <path d="M68 34a21.5 21.5 0 1 0 .9 32" fill="none" stroke="#f5eee3" strokeWidth="11" strokeLinecap="round" />
-      <path d="M76 22c1.6 8.4 5.2 12 13.5 13.6C81.2 37.2 77.6 40.8 76 49.2 74.4 40.8 70.8 37.2 62.4 35.6 70.8 34 74.4 30.4 76 22z" fill="#d98546" />
+      <rect width="100" height="100" rx="27" fill="#22262a" />
+      <path d="M68 34a21.5 21.5 0 1 0 .9 32" fill="none" stroke="#eceef0" strokeWidth="11" strokeLinecap="round" />
+      <path d="M76 22c1.6 8.4 5.2 12 13.5 13.6C81.2 37.2 77.6 40.8 76 49.2 74.4 40.8 70.8 37.2 62.4 35.6 70.8 34 74.4 30.4 76 22z" fill="#4ade80" />
     </svg>
   );
 }
@@ -23,11 +23,12 @@ export function Word({ children }: { children: ReactNode }) {
   return <span className="word-accent">{children}</span>;
 }
 
+/* section eyebrow: monospaced and uppercase, with the cyrus spark as its only
+   ornament. The pill version read as a badge; a label should not shout. */
 export const Eyebrow = ({ children }: { children: ReactNode }) => (
-  <span className="inline-flex items-center gap-2 font-mono text-[11.5px] font-medium text-rust bg-peach border border-accent/20 rounded-full px-4 py-2">
-    <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden className="shrink-0 animate-diamond">
-      <path d="M12 1.8c.95 4.9 3.32 8.1 8.4 9.5.6.16.6 1.04 0 1.2-5.08 1.4-7.45 4.6-8.4 9.5-.16.6-1.04.6-1.2 0-.95-4.9-3.32-8.1-8.4-9.5-.6-.16-.6-1.04 0-1.2 5.08-1.4 7.45-4.6 8.4-9.5.16-.6 1.04-.6 1.2 0z" fill="#b4602c" />
-      <path d="M18.6 3.2c.4 2.05 1.35 3.4 3.6 4.05.26.07.26.45 0 .52-2.25.65-3.2 2-3.6 4.05-.07.26-.45.26-.52 0-.4-2.05-1.35-3.4-3.6-4.05a.28.28 0 0 1 0-.52c2.25-.65 3.2-2 3.6-4.05.07-.26.45-.26.52 0z" fill="#d98546" opacity=".8" />
+  <span className="inline-flex items-center gap-2.5 font-mono text-[10.5px] font-medium uppercase tracking-[.16em] text-dim">
+    <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden className="shrink-0">
+      <path d="M12 1.8c.95 4.9 3.32 8.1 8.4 9.5.6.16.6 1.04 0 1.2-5.08 1.4-7.45 4.6-8.4 9.5-.16.6-1.04.6-1.2 0-.95-4.9-3.32-8.1-8.4-9.5-.6-.16-.6-1.04 0-1.2 5.08-1.4 7.45-4.6 8.4-9.5.16-.6 1.04-.6 1.2 0z" fill="var(--color-accent)" />
     </svg>
     {children}
   </span>
@@ -43,8 +44,11 @@ const BTN_SIZES: Record<string, string> = {
   sm: "px-3.5 py-1.5 text-[12.5px]", md: "px-5 py-2.5 text-[14px]", lg: "px-7 py-3.5 text-[15.5px]",
 };
 export const BTN_VARIANTS: Record<string, string> = {
-  primary: "bg-accent text-white border border-accent shadow-[0_10px_26px_-10px_rgba(180, 96, 44,.55)] hover:bg-accentd",
-  dark: "bg-coffee text-foam border border-coffee hover:bg-bean hover:border-roast",
+  /* the signal-green fill. Its label is near-black on graphite and white on
+     paper, so it stays legible whichever mode the visitor is in. */
+  primary: "bg-accent text-accentfg border border-accent shadow-[0_10px_26px_-12px_rgba(34,197,94,.5)] hover:bg-accentd hover:border-accentd",
+  /* the neutral pill: near-white on graphite, graphite on paper */
+  dark: "bg-ink text-paper border border-ink hover:bg-accent hover:text-accentfg hover:border-accent",
   outline: "bg-card border border-line text-ink shadow-soft hover:border-accent hover:-translate-y-px",
   ghost: "text-cocoa hover:text-ink hover:bg-card border border-transparent hover:border-line",
 };

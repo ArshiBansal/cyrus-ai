@@ -1,16 +1,14 @@
-/* ══ jsonLd.ts — the machine-readable layer under the four pages that
+/* ══ jsonLd.ts — the machine-readable layer under the pages that
    already hold the facts ═══════════════════════════════════════════════
    Server-safe: no React, no browser APIs, nothing imported from lib/util.
    The page components call these and inline the result as
    <script type="application/ld+json">.
 
-   The rule this module obeys is the one the issue set: a date is emitted
-   only when the dataset carries it. Google requires startDate on Event,
-   and no hackathon record has a real start date yet, so those pages
-   publish a CreativeWork with the deadline as `expires` and switch to
-   Event the moment a `start` lands in the data. Nothing is guessed to
-   make a validator happy. ════════════════════════════════════════════ */
-import type { Hack } from "@/data/hackathons";
+   The rule this module obeys is the one the issue set: a field is emitted
+   only when the dataset carries it. Program records state a window in
+   prose rather than as two ISO dates, so they publish as Course, not
+   Event - nothing is guessed to make a validator happy.
+   ═══════════════════════════════════════════════════════════════════ */
 import { PROGRAM_DETAILS } from "@/data/programDetails";
 import { SITE_ORIGIN, canonical } from "@/lib/seo";
 import type { Org, Program } from "@/lib/types";
@@ -32,10 +30,6 @@ const githubOrg = (login: string) => `https://github.com/${login}`;
 const avatar = (login: string, size = 168) => `${githubOrg(login)}.png?size=${size}`;
 const absolute = (path: string) => (path.startsWith("http") ? path : `${SITE_ORIGIN}${path}`);
 
-/** A date the dataset states as ISO, or nothing. */
-const isoDate = (value: string | undefined): string | undefined =>
-  value && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : undefined;
-
 export function webSite(): JsonLd {
   return {
     "@context": "https://schema.org",
@@ -50,7 +44,7 @@ export function webSite(): JsonLd {
       "@type": "SearchAction",
       target: {
         "@type": "EntryPoint",
-        urlTemplate: `${canonical("/projects")}?q={search_term_string}`,
+        urlTemplate: `${canonical("/skills")}?q={search_term_string}`,
       },
       "query-input": "required name=search_term_string",
     },
@@ -67,7 +61,8 @@ export function programEntity(p: Program): JsonLd {
     name: p.name,
     url,
     description: p.tag,
-    image: absolute(p.img),
+    // a tracked program without cover art must not emit an empty image URL
+    ...(p.img ? { image: absolute(p.img) } : {}),
     provider: {
       "@type": "Organization",
       name: p.owner,
@@ -83,74 +78,6 @@ export function programEntity(p: Program): JsonLd {
     body.abstract = detail.about[0];
   }
   return body;
-}
-
-const EVENT_STATUS: Record<Hack["status"], string> = {
-  open: "https://schema.org/EventScheduled",
-  upcoming: "https://schema.org/EventScheduled",
-  rolling: "https://schema.org/EventScheduled",
-  recurring: "https://schema.org/EventScheduled",
-  closed: "https://schema.org/EventCompleted",
-};
-
-function attendanceMode(format: string): string | undefined {
-  const f = format.toLowerCase();
-  if (f.includes("hybrid")) return "https://schema.org/MixedEventAttendanceMode";
-  if (f.includes("online") || f.includes("remote") || f.includes("virtual"))
-    return "https://schema.org/OnlineEventAttendanceMode";
-  if (f.includes("in person") || f.includes("onsite") || f.includes("on-site"))
-    return "https://schema.org/OfflineEventAttendanceMode";
-  return undefined;
-}
-
-/** The official listing, when the record has one (the live pulls do). */
-const officialUrl = (h: Hack): string | undefined => {
-  const url = (h as { url?: unknown }).url;
-  return typeof url === "string" && url.startsWith("http") ? url : undefined;
-};
-
-export function hackathonEntity(h: Hack): JsonLd {
-  const url = canonical(`/hackathons/${h.id}`);
-  const start = isoDate(h.start);
-  const end = isoDate(h.deadline);
-  const organizer = {
-    "@type": "Organization",
-    name: h.org,
-    url: githubOrg(h.orgLogo),
-    logo: avatar(h.orgLogo),
-  };
-  const mode = attendanceMode(h.format);
-
-  if (start) {
-    return {
-      "@context": "https://schema.org",
-      "@type": "Event",
-      "@id": url,
-      name: h.name,
-      url,
-      description: h.theme,
-      startDate: start,
-      ...(end ? { endDate: end } : {}),
-      eventStatus: EVENT_STATUS[h.status],
-      ...(mode ? { eventAttendanceMode: mode } : {}),
-      organizer,
-      ...(officialUrl(h) ? { sameAs: officialUrl(h) } : {}),
-    };
-  }
-
-  // No real start date in the data, so this is not an Event yet.
-  return {
-    "@context": "https://schema.org",
-    "@type": "CreativeWork",
-    "@id": url,
-    name: h.name,
-    url,
-    description: h.theme,
-    keywords: h.tags.join(", "),
-    provider: organizer,
-    ...(end ? { expires: end } : {}),
-    ...(officialUrl(h) ? { sameAs: officialUrl(h) } : {}),
-  };
 }
 
 export function organizationEntity(o: Org): JsonLd {

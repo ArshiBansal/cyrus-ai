@@ -5,7 +5,7 @@
 /** Production origin. sitemap.ts, robots.ts and every canonical tag share it. */
 export const SITE_ORIGIN = "https://cyrus-agent.vercel.app";
 
-/** Absolute URL for an in-site path, e.g. canonical("/projects"). */
+/** Absolute URL for an in-site path, e.g. canonical("/skills"). */
 export function canonical(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   return SITE_ORIGIN + p;

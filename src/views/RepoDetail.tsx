@@ -147,8 +147,8 @@ export default function RepoDetail() {
         <div className={`${W} py-12`}>
           <p className="font-mono text-[10.5px] tracking-[.14em] uppercase text-dim mb-5">
             <Link to="/" className="hover:text-accent">Home</Link> / {repo.cat === "programs"
-              ? <Link to="/opensource" className="hover:text-accent">Open Source</Link>
-              : <Link to="/projects" className="hover:text-accent">Projects</Link>} / <span className="text-cocoa">{repo.repo.split("/")[1]}</span>
+              ? <Link to="/projects" className="hover:text-accent">Projects</Link>
+              : <Link to="/skills" className="hover:text-accent">Skills</Link>} / <span className="text-cocoa">{repo.repo.split("/")[1]}</span>
           </p>
           <div className="flex items-center gap-4 flex-wrap">
             <span className="w-14 h-14 rounded-4 grid place-items-center overflow-hidden shrink-0 shadow-soft bg-white border border-line">

@@ -1,6 +1,6 @@
 /* ══ ogContent.test.ts — the share card may only say what the data says ══
  * The card is generated, which makes it easy to let it drift into quoting a
- * number the catalog no longer holds, or calling a prize-only hackathon a
+ * number the catalog no longer holds, or calling a prize-only program a
  * stipend. These tests pin every string on the card to a source field.
  */
 import { readFileSync } from "node:fs";
@@ -9,10 +9,8 @@ import { describe, expect, it } from "vitest";
 import { PROGRAMS } from "@/data/orgs";
 import { REPOS } from "@/data/repos";
 import { REAL_ORGS } from "@/data/realOrgs";
-import { ALL_HACKS, fmt, openHacks, STATS } from "@/lib/siteStats";
+import { fmt, STATS } from "@/lib/siteStats";
 import { catalogSnapshot, homeCard, programCard } from "@/lib/ogContent";
-
-const FIXED = new Date(Date.UTC(2026, 9, 20));
 
 describe("catalog snapshot", () => {
   it("is the newest updated date in the project catalog", () => {
@@ -32,15 +30,20 @@ describe("catalog snapshot", () => {
 });
 
 describe("home card", () => {
-  const card = homeCard(FIXED);
+  const card = homeCard();
 
   it("quotes the live counts, not literals", () => {
     const said = card.rows.map((r) => r.v).join(" | ");
-    expect(said).toContain(fmt(STATS.repos));
+    expect(said).toContain(`${fmt(STATS.issues)} across`);
     expect(said).toContain(`${PROGRAMS.length} tracked`);
-    expect(said).toContain(`${fmt(ALL_HACKS.length)} listed, ${openHacks(FIXED)} open now`);
+    expect(said).toContain(`${fmt(STATS.archive)} mentored program projects`);
     expect(said).toContain(`${REAL_ORGS.length} profiles`);
     expect(card.rows).toHaveLength(4);
+  });
+
+  it("does not advertise a section the site no longer has", () => {
+    const said = [card.eyebrow, ...card.title, card.foot, card.alt, ...card.rows.flatMap((r) => [r.k, r.v])].join(" ");
+    expect(said).not.toMatch(/hackathon|artifact|free api|learning resource/i);
   });
 
   it("does not call every program stipended", () => {
@@ -89,7 +92,10 @@ describe("program cards", () => {
     });
   }
 
-  it("covers all ten programs", () => {
-    expect(PROGRAMS).toHaveLength(10);
+  it("covers every program in the catalog", () => {
+    /* the loop above is driven by PROGRAMS, so this only fails when the
+       data file changes size - which is exactly when the card builder
+       needs re-reading against the new records */
+    expect(PROGRAMS).toHaveLength(13);
   });
 });

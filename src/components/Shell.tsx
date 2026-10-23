@@ -19,11 +19,12 @@ function ScrollManager() {
   return null;
 }
 
-/* one-time intro curtain: decided after mount so server HTML never carries it */
-function Splash() {
+/* one-time intro curtain: marketing pages only, decided after mount so
+   server HTML never carries it */
+function Splash({ app }: { app: boolean }) {
   const [state, setState] = useState<"pending" | "show" | "gone">("pending");
   useEffect(() => {
-    if (sessionStorage.getItem("cyrus-splashed") === "1" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (app || sessionStorage.getItem("cyrus-splashed") === "1" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setState("gone");
       return;
     }
@@ -33,7 +34,7 @@ function Splash() {
     const t1 = setTimeout(() => { document.body.style.overflow = ""; }, 1500);
     const t2 = setTimeout(() => setState("gone"), 2000);
     return () => { clearTimeout(t1); clearTimeout(t2); document.body.style.overflow = ""; };
-  }, []);
+  }, [app]);
   if (state !== "show") return null;
   return (
     <div className="splash" aria-hidden="true">
@@ -43,7 +44,7 @@ function Splash() {
           cyrus<span className="text-accent">.ai</span>
         </div>
         <div className="splash-sub font-mono text-[10.5px] tracking-[.18em] uppercase text-dim">
-          hackathons · open source · agent skills
+          open source · programs · skills
         </div>
       </div>
     </div>
@@ -51,14 +52,19 @@ function Splash() {
 }
 
 export default function Shell({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  /* the board is an application: it owns its top bar and sidebar, so the
+     marketing header and footer stay off those routes */
+  const app = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   return (
     <StoreProvider>
       <ScrollManager />
-      <Splash />
+      <Splash app={app} />
       <div className="min-h-screen flex flex-col">
-        <Nav />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <a className="skip-link" href="#main">Skip to content</a>
+        {!app && <Nav />}
+        <main id="main" tabIndex={-1} className="flex-1">{children}</main>
+        {!app && <Footer />}
       </div>
       <Palette />
       <AuthModal />

@@ -6,9 +6,10 @@ import {
 } from "./queries";
 
 describe("saved-item guards", () => {
-  it("accepts only the six known item types", () => {
-    for (const t of ["repo", "org", "hackathon", "program", "resource", "artifact"]) expect(validItemType(t)).toBe(true);
+  it("accepts only the four item types the site has pages for", () => {
+    for (const t of ["repo", "org", "program", "issue"]) expect(validItemType(t)).toBe(true);
     expect(validItemType("wiki")).toBe(false);
+    expect(validItemType("hackathon")).toBe(false);
     expect(validItemType(undefined)).toBe(false);
   });
   it("bounds item ids to sane strings", () => {

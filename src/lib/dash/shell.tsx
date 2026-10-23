@@ -1,12 +1,16 @@
 "use client"
-/* ══ shell.tsx — the dashboard chrome shared by every dashboard page ══
-   Dark sidebar on desktop, horizontal chip rail on phones, one sign-in gate,
-   and a professional page header for each feature.                      ══ */
+/* ══ shell.tsx — the board's own application chrome ═════════════
+   A full-width app: top utility bar, a collapsible grouped sidebar with
+   live counts and a pinned account card, then the page column. The
+   marketing header is swapped for this one on /dashboard routes by
+   Shell.tsx, so the board reads as a product and not as a page.   ══ */
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "@/lib/router";
-import { Avatar, btn, Word } from "../../components/ui";
-import { DP, FEATURES, W } from "./shared";
+import { Avatar, btn, Logo } from "../../components/ui";
+import { ThemeToggle } from "../../components/Nav";
+import { useStored } from "../util";
+import { DP, W } from "./shared";
 import type { Dash } from "./useDash";
 
 const SW = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -16,20 +20,6 @@ export const Ic = ({ d, size = 17, filled }: { d: string; size?: number; filled?
     {filled ? <path d={d} fill="currentColor" stroke="none" /> : <path d={d} {...SW} />}
   </svg>
 );
-
-export function Ring({ pct }: { pct: number }) {
-  const R = 18, C = 2 * Math.PI * R;
-  return (
-    <span className="relative w-11 h-11 shrink-0 grid place-items-center">
-      <svg width="44" height="44" viewBox="0 0 44 44" className="-rotate-90">
-        <circle cx="22" cy="22" r={R} fill="none" strokeWidth="4" stroke="var(--color-roast)" />
-        <circle cx="22" cy="22" r={R} fill="none" strokeWidth="4" strokeLinecap="round" stroke="var(--color-ember)"
-          strokeDasharray={`${(pct / 100) * C} ${C}`} />
-      </svg>
-      <em className="absolute inset-0 grid place-items-center font-mono text-[10px] not-italic font-bold text-ember">{pct}%</em>
-    </span>
-  );
-}
 
 export function Toggle({ on, flip }: { on: boolean; flip: () => void }) {
   return (
@@ -41,20 +31,42 @@ export function Toggle({ on, flip }: { on: boolean; flip: () => void }) {
 }
 
 export const Card = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
-  <section className={`bg-card border border-line rounded-[22px] p-6 shadow-soft ${className}`}>{children}</section>
+  <section className={`bg-card border border-line rounded-[18px] p-5 shadow-soft ${className}`}>{children}</section>
 );
 
-/* one gate for every dashboard route */
+/* dotted stat row: the reference card footer. Label left, value right,
+   a hairline dotted rule carrying between them. */
+export const StatRow = ({ items }: { items: [string, ReactNode][] }) => (
+  <div className="flex items-center gap-1.5 flex-wrap pt-3 mt-3 border-t border-dashed border-line">
+    {items.map(([l, v], i) => (
+      <span key={l} className={`flex items-baseline gap-1.5 font-mono text-[11px] ${i ? "before:content-['·'] before:text-rule before:mr-1.5" : ""}`}>
+        <span className="text-dim">{l}</span>
+        <b className="text-ink font-semibold">{v}</b>
+      </span>
+    ))}
+  </div>
+);
+
+/* ── sign-in gate for every board route ─────────────────────────── */
 export function DashGate({ dash, children }: { dash: Dash; children: ReactNode }) {
+  /* the board is read out of this browser a frame after the first paint, so
+     wait for it instead of showing the sign-in door to someone who is
+     already through it */
+  if (!dash.boardReady)
+    return (
+      <div className="min-h-[60vh] grid place-items-center" aria-busy="true">
+        <span className="font-mono text-[10.5px] uppercase tracking-[.16em] text-dim">Loading your board</span>
+      </div>
+    );
   if (dash.user) return <>{children}</>;
   return (
     <div className={`${W} py-24 text-center`}>
-      <p className="font-mono text-[10.5px] tracking-[.14em] uppercase text-dim mb-4">Dashboard</p>
-      <h1 className="font-display font-extrabold text-[clamp(28px,4vw,42px)] tracking-[-.02em] mb-3">
-        Your board is <Word>empty</Word> until you sign in.
+      <p className="eyebrow mb-4">Your board</p>
+      <h1 className="font-display font-extrabold text-[clamp(28px,4vw,44px)] tracking-[-.025em] mb-3">
+        <span className="word-accent">Sign in</span> to open the board.
       </h1>
-      <p className="text-cocoa max-w-[440px] mx-auto text-[15.5px] leading-[1.65] mb-8">
-        Saved repos, followed orgs, live hackathon deadlines and a reading list tuned to your stack - all behind one free sign-in.
+      <p className="text-cocoa max-w-[430px] mx-auto text-[15.5px] leading-[1.6] mb-8">
+        Tracked issues, followed repositories and organizations - held in your browser, synced to your account when you have one.
       </p>
       <div className="flex gap-3 justify-center flex-wrap">
         <button className={btn("primary", "lg")} onClick={dash.googleIn} disabled={dash.gBusy}>
@@ -66,109 +78,213 @@ export function DashGate({ dash, children }: { dash: Dash; children: ReactNode }
   );
 }
 
-/* sidebar rail: Overview + every feature page, with live counts */
-export function featureCounts(d: Dash): Record<string, string> {
-  return {
-    saved: String(d.saved.length),
-    orgs: String(d.savedOrgs.length),
-    matcher: d.prof.done ? String(d.recs.length) : "",
-    watchlist: String(d.watch.length),
-    mentors: String(d.mentors.length),
-    compare: String(d.cmpOrgs.length),
-    artifacts: String(d.favTools.length),
-    deadlines: String(d.due.length),
-    reading: String(d.picks.length),
-    stack: String(d.langs.length),
-  };
+/* ── sidebar model: three groups, only routes that exist ────────── */
+function rail(d: Dash): { label: string; items: { icon: string; text: string; to: string; count?: string }[] }[] {
+  return [
+    {
+      label: "Board",
+      items: [
+        { icon: DP.grid, text: "Overview", to: "/dashboard" },
+        { icon: DP.issue, text: "My Issues", to: "/dashboard/issues", count: String(d.issues.length) },
+        { icon: DP.repo, text: "My Repositories", to: "/dashboard/repos", count: String(d.saved.length) },
+      ],
+    },
+    {
+      label: "Plan",
+      items: [
+        { icon: DP.calendar, text: "Season calendar", to: "/dashboard/calendar" },
+        { icon: DP.star, text: "Demand radar", to: "/dashboard/demand" },
+      ],
+    },
+    {
+      label: "Tools",
+      items: [
+        { icon: DP.pulse, text: "Repo analyser", to: "/dashboard/analyser" },
+        { icon: DP.file, text: "Draft studio", to: "/dashboard/drafts" },
+        { icon: DP.spark, text: "Co-pilot matcher", to: "/dashboard/matcher" },
+        { icon: DP.target, text: "Mentor finder", to: "/dashboard/mentors" },
+        { icon: DP.layers, text: "Compare orgs", to: "/dashboard/compare" },
+        { icon: DP.code, text: "Git initializer", to: "/dashboard/gitstart" },
+      ],
+    },
+    {
+      label: "Discover",
+      items: [
+        { icon: DP.search, text: "Issue finder", to: "/issues" },
+        { icon: DP.building, text: "Organizations", to: "/organizations", count: String(d.savedOrgs.length) },
+        { icon: DP.flag, text: "Leaderboard", to: "/leaderboard" },
+        { icon: DP.layers, text: "Project archive", to: "/projects" },
+        { icon: DP.star, text: "Skill catalog", to: "/skills" },
+        { icon: DP.spark, text: "Sponsors", to: "/sponsors" },
+      ],
+    },
+    {
+      label: "Account",
+      items: [{ icon: DP.settings, text: "Settings", to: "/dashboard/settings" }],
+    },
+  ];
 }
 
 export function DashShell({ dash, active, children }: { dash: Dash; active: string; children: ReactNode }) {
   const user = dash.user!;
-  const counts = featureCounts(dash);
-  const [prefsOpen, setPrefsOpen] = useState(false);
-  const rail: [string, string, string, string][] = [
-    [DP.grid, "Overview", "/dashboard", ""],
-    ...FEATURES.map((f) => [DP[f.icon] ?? DP.star, f.title, `/dashboard/${f.id}`, counts[f.id] ?? ""] as [string, string, string, string]),
-  ];
+  const [narrow, setNarrow] = useStored<boolean>("cyrus.nav.collapsed", false);
+  const [menu, setMenu] = useState(false);
+  const groups = rail(dash);
+  const flat = groups.flatMap((g) => g.items.map((it) => ({ ...it, group: g.label })));
+
   return (
-    <div className={`${W} pt-8 pb-6 grid grid-cols-[272px_1fr] gap-6 items-start max-[980px]:grid-cols-1 max-[980px]:gap-4`}>
-      <aside className="sticky top-[86px] max-[980px]:static bg-coffee border border-bean rounded-[24px] p-5 text-foam">
-        <div className="flex items-center gap-3 pb-4 border-b border-bean">
-          <Avatar name={user.name} size={44} src={user.picture} />
-          <div className="min-w-0">
-            <b className="block font-display text-[14.5px] text-white truncate">{user.name}</b>
-            <span className="text-[11px] text-steam truncate block">
-              {user.email || (user.provider === "guest" ? "Guest session" : `Signed in with ${user.provider}`)}
-            </span>
-          </div>
-          <Ring pct={dash.pct} />
-        </div>
-
-        {/* desktop: full rail. phone: horizontally scrollable chips */}
-        <nav className="hidden max-[980px]:flex gap-2 overflow-x-auto py-3.5 no-scrollbar" aria-label="Dashboard sections">
-          {rail.map(([ic, l, to, cnt]) => (
-            <Link key={l} to={to} className={`shrink-0 flex items-center gap-2 px-3.5 py-2 rounded-full border text-[12.5px] font-semibold transition-colors ${active === to ? "bg-accent border-accent text-white" : "border-bean text-steam hover:bg-bean hover:text-foam"}`}>
-              <Ic d={ic} size={14} />{l}{cnt && <span className="font-mono text-[10px] opacity-80">{cnt}</span>}
-            </Link>
-          ))}
-        </nav>
-        <nav className="max-[980px]:hidden grid gap-[3px] py-3.5 max-h-[46vh] overflow-y-auto" aria-label="Dashboard sections">
-          {rail.map(([ic, l, to, cnt]) => (
-            <Link key={l} to={to}
-              className={`flex items-center gap-3 w-full text-left px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold transition-colors ${active === to ? "bg-bean text-white" : "text-steam hover:bg-bean hover:text-foam"}`}>
-              <span className="w-4 text-center shrink-0"><Ic d={ic} size={15} /></span>{l}
-              {cnt && <span className="ml-auto font-mono text-[10.5px] opacity-75">{cnt}</span>}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="border-t border-bean pt-3">
-          <button onClick={() => setPrefsOpen((v) => !v)} aria-expanded={prefsOpen}
-            className="flex items-center gap-3 w-full text-left px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold text-steam hover:bg-bean hover:text-foam cursor-pointer transition-colors">
-            <span className="w-4 text-center"><Ic d={DP.settings} size={15} /></span>Notifications
-            <span className="ml-auto font-mono text-[10px] opacity-70">{prefsOpen ? "hide" : "edit"}</span>
+    <div className="bg-paper">
+      {/* ── app top bar ── */}
+      <header className="sticky top-0 z-50 bg-paper/92 backdrop-blur-[14px] border-b border-line">
+        <div className="flex items-center gap-3 h-[58px] px-4 md:px-5">
+          <button onClick={() => setMenu(true)} aria-label="Open board menu"
+            className="lg:hidden w-[34px] h-[34px] rounded-[10px] grid place-items-center border border-line text-cocoa hover:text-ink hover:border-accent transition-colors cursor-pointer shrink-0">
+            <Ic d={DP.collapse} size={16} />
           </button>
-          {prefsOpen && (
-            <div className="grid gap-1 pb-1">
-              {([
-                ["Weekly digest", "digest"],
-                ["Hackathon deadlines", "windows"],
-                ["Mentions & replies", "mentions"],
-              ] as const).map(([l, k]) => (
-                <div key={k} className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-steam">
-                  <span className="flex-1">{l}</span>
-                  <Toggle on={dash.prefs[k]} flip={() => dash.setPrefs({ ...dash.prefs, [k]: !dash.prefs[k] })} />
+          <Link to="/dashboard" className="flex items-center gap-2.5 shrink-0 min-w-0">
+            <Logo size={30} />
+            <span className="font-display font-extrabold text-[17px] tracking-[-.02em]">cyrus<span className="text-accent">.ai</span></span>
+          </Link>
+          <span className="hidden md:inline-flex items-center gap-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[.14em] text-dim border border-line rounded-full px-2.5 py-1">
+            <span className="w-[5px] h-[5px] rounded-full bg-accent shrink-0" aria-hidden />Board
+          </span>
+
+          <div className="ml-auto flex items-center gap-2.5">
+            <button onClick={() => dash.setPaletteOpen(true)}
+              className="hidden md:flex items-center gap-2 w-[220px] h-[34px] px-3 rounded-[10px] border border-line bg-card text-dim text-[13px] hover:border-accent/60 hover:text-cocoa transition-colors cursor-pointer">
+              <Ic d={DP.search} size={14} />
+              <span className="truncate">Search repos and orgs</span>
+              <kbd className="ml-auto font-mono text-[9.5px] border border-line rounded px-1.5 py-px bg-paper">&#8984;K</kbd>
+            </button>
+            <ThemeToggle />
+            <span className="w-px h-6 bg-line hidden lg:block" aria-hidden />
+            <Link to="/" className="hidden lg:inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-cocoa hover:text-ink transition-colors">
+              <Ic d={DP.external} size={13} /> Site
+            </Link>
+            <Link to="/dashboard/settings" className={`w-[34px] h-[34px] rounded-full grid place-items-center overflow-hidden border transition-colors ${active === "/dashboard/settings" ? "border-accent" : "border-line hover:border-accent/60"}`} aria-label="Settings">
+              <Avatar name={user.name} size={34} src={user.picture} />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex items-start">
+        {/* ── sidebar (desktop) ── */}
+        <aside className={`hidden lg:flex flex-col sticky top-[58px] h-[calc(100vh-58px)] shrink-0 border-r border-line bg-sand transition-[width] duration-200 ease-silk ${narrow ? "w-[74px]" : "w-[248px]"} max-h-[calc(100vh-58px)]`}>
+          <nav className="flex-1 overflow-y-auto panel-scroll px-3 py-4" aria-label="Board sections">
+            {groups.map((g, gi) => (
+              <div key={g.label} className={gi ? "mt-5" : ""}>
+                <div className={`flex items-center mb-1.5 ${narrow ? "justify-center" : "px-2.5"}`}>
+                  {narrow
+                    ? <span className="w-6 h-px bg-line" aria-hidden />
+                    : <span className="font-mono text-[9.5px] font-semibold uppercase tracking-[.16em] text-dim">{g.label}</span>}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="grid gap-[3px]">
+                  {g.items.map((it) => {
+                    const on = active === it.to;
+                    return (
+                      <Link key={it.to} to={it.to} title={narrow ? it.text : undefined}
+                        className={`group relative flex items-center gap-3 rounded-[10px] text-[13.5px] font-semibold transition-colors ${narrow ? "justify-center px-0 py-2.5" : "px-2.5 py-2.5"} ${on ? "bg-clay text-ink" : "text-cocoa hover:bg-clay/60 hover:text-ink"}`}>
+                        <span className={`shrink-0 w-[17px] text-center ${on ? "text-accent" : ""}`}><Ic d={it.icon} size={16} /></span>
+                        {!narrow && <span className="truncate">{it.text}</span>}
+                        {!narrow && it.count && it.count !== "0" && (
+                          <span className={`ml-auto font-mono text-[10.5px] font-bold ${on ? "text-accent" : "text-dim"}`}>{it.count}</span>
+                        )}
+                        {on && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-[18px] w-[3px] rounded-l-full bg-accent" aria-hidden />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
 
-        <div className="border-t border-bean mt-2 pt-3.5 grid gap-1">
-          <Link to="/nova" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] font-bold text-white bg-accent/85 hover:bg-accent transition-colors"><Ic d={DP.spark} size={15} /> Ask Co-pilot</Link>
-          <Link to="/projects" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold text-steam hover:bg-bean hover:text-foam"><Ic d={DP.plus} size={15} /> Find something to save</Link>
-          <Link to="/organizations" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold text-steam hover:bg-bean hover:text-foam"><Ic d={DP.building} size={15} /> Pick an organization</Link>
-          <Link to="/tools" className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold text-steam hover:bg-bean hover:text-foam"><Ic d={DP.gem} size={15} /> Browse the Artifacts</Link>
-        </div>
-      </aside>
-      <main className="grid gap-5 min-w-0">{children}</main>
-    </div>
-  );
-}
+          <div className="border-t border-line p-3">
+            {narrow ? (
+              <button onClick={() => setNarrow(false)} aria-label="Expand sidebar"
+                className="w-full grid place-items-center py-2.5 rounded-[10px] text-dim hover:text-ink hover:bg-clay/60 transition-colors cursor-pointer">
+                <Ic d={DP.expand} size={16} />
+              </button>
+            ) : (
+              <div className="flex items-center gap-2.5 p-2 rounded-[12px] bg-card border border-line">
+                <Avatar name={user.name} size={32} src={user.picture} />
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[12.5px] font-semibold truncate">{user.name}</b>
+                  <span className="block text-[11px] text-dim truncate">{user.email || (user.provider === "guest" ? "Guest session" : user.provider)}</span>
+                </span>
+                <button onClick={() => setNarrow(true)} aria-label="Collapse sidebar"
+                  className="w-[26px] h-[26px] grid place-items-center rounded-[8px] text-dim hover:text-ink hover:bg-clay transition-colors cursor-pointer shrink-0">
+                  <Ic d={DP.collapse} size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
 
-/* page header for a feature page */
-export function DashHead({ title, sub, back = "/dashboard" }: { title: string; sub: string; back?: string }) {
-  return (
-    <div className="flex items-start gap-4 flex-wrap">
-      <div className="min-w-0">
-        <Link to={back} className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[.12em] text-dim hover:text-accent transition-colors">
-          <Ic d={DP.home} size={12} /> Dashboard
-        </Link>
-        <h1 className="font-display font-extrabold tracking-[-.02em] text-[clamp(24px,3vw,34px)] mt-1.5">{title}</h1>
-        <p className="text-cocoa text-[14.5px] leading-[1.65] mt-1.5 max-w-[640px]">{sub}</p>
+        {/* ── sidebar (phone / tablet drawer) ── */}
+        {menu && (
+          <>
+            <div onClick={() => setMenu(false)} aria-hidden className="lg:hidden fixed inset-0 z-[70] bg-black/55 backdrop-blur-[3px]" style={{ animation: "fadeIn .2s ease both" }} />
+            <aside role="dialog" aria-label="Board menu" className="lg:hidden fixed top-0 left-0 bottom-0 z-[75] w-[min(84vw,300px)] bg-sand border-r border-line flex flex-col" style={{ animation: "sheetIn .3s cubic-bezier(.32,.9,.35,1) both" }}>
+              <div className="flex items-center gap-2.5 h-[58px] px-4 border-b border-line shrink-0">
+                <Logo size={28} />
+                <b className="font-display font-extrabold text-[16px] tracking-[-.02em]">cyrus<span className="text-accent">.ai</span></b>
+                <button onClick={() => setMenu(false)} aria-label="Close menu" className="ml-auto w-[32px] h-[32px] grid place-items-center rounded-[9px] border border-line text-cocoa hover:text-ink cursor-pointer">
+                  <Ic d={DP.x} size={14} />
+                </button>
+              </div>
+              <nav className="flex-1 overflow-y-auto panel-scroll px-3 py-4" aria-label="Board sections">
+                {groups.map((g, gi) => (
+                  <div key={g.label} className={gi ? "mt-5" : ""}>
+                    <p className="px-2.5 mb-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[.16em] text-dim">{g.label}</p>
+                    <div className="grid gap-[3px]">
+                      {g.items.map((it) => (
+                        <Link key={it.to} to={it.to} onClick={() => setMenu(false)}
+                          className={`relative flex items-center gap-3 px-2.5 py-2.5 rounded-[10px] text-[13.5px] font-semibold ${active === it.to ? "bg-clay text-ink" : "text-cocoa"}`}>
+                          <span className="w-[17px] text-center"><Ic d={it.icon} size={16} /></span>
+                          {it.text}
+                          {it.count && it.count !== "0" && <span className="ml-auto font-mono text-[10.5px] text-dim">{it.count}</span>}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </nav>
+              <div className="border-t border-line p-3 grid gap-2">
+                <Link to="/" onClick={() => setMenu(false)} className="flex items-center gap-3 px-2.5 py-2.5 rounded-[10px] text-[13.5px] font-semibold text-cocoa hover:bg-clay/60"><Ic d={DP.external} size={16} /> Back to the site</Link>
+                <button onClick={() => { setMenu(false); dash.signOut(); }} className="flex items-center gap-3 px-2.5 py-2.5 rounded-[10px] text-[13.5px] font-semibold text-cocoa hover:bg-clay/60 cursor-pointer"><Ic d={DP.logout} size={16} /> Sign out</button>
+              </div>
+            </aside>
+          </>
+        )}
+
+        {/* ── page column ── */}
+        <div className="flex-1 min-w-0">
+          {/* phone chip rail keeps the board reachable without the drawer */}
+          <nav className="lg:hidden flex gap-2 overflow-x-auto no-scrollbar px-4 py-3 border-b border-line bg-sand" aria-label="Board sections">
+            {flat.map((it) => (
+              <Link key={it.to} to={it.to}
+                className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12.5px] font-semibold transition-colors ${active === it.to ? "bg-accent border-accent text-accentfg" : "border-line bg-card text-cocoa"}`}>
+                <Ic d={it.icon} size={13} />{it.text}{it.count && it.count !== "0" && <span className="font-mono text-[10px] opacity-80">{it.count}</span>}
+              </Link>
+            ))}
+          </nav>
+          <main className="mx-auto max-w-[1160px] px-4 md:px-7 py-6 md:py-8 grid gap-5 [&>*]:min-w-0">{children}</main>
+        </div>
       </div>
     </div>
   );
 }
 
-/* keep the chip rail clean: no visible scrollbar on phones */
+/* page header: title, one short line, and any actions the page owns */
+export function DashHead({ title, sub, action }: { title: string; sub: string; action?: ReactNode }) {
+  return (
+    <div className="flex items-end gap-4 flex-wrap">
+      <div className="min-w-0">
+        <h1 className="font-display font-extrabold tracking-[-.025em] text-[clamp(24px,3vw,34px)]">{title}</h1>
+        <p className="text-cocoa text-[14px] leading-[1.6] mt-1.5 max-w-[640px]">{sub}</p>
+      </div>
+      {action && <div className="ml-auto flex gap-2.5 flex-wrap shrink-0">{action}</div>}
+    </div>
+  );
+}

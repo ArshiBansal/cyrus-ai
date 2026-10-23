@@ -1,39 +1,69 @@
 /* ═══════════════════════════════════════════════════════════
-   cyrus.ai — Tailwind v4 theme (warm coffee-and-honey system)
-   paper/sand/cream surfaces · espresso ink · terracotta accent
-   dark coffee islands · Plus Jakarta Sans / Inter / JetBrains Mono
+   cyrus.ai — Tailwind v4 theme (graphite + signal green)
+
+   Dark is the default mode: near-black graphite surfaces, cool grey
+   ink, one signal green as the accent. Light mode is a cool neutral
+   variant, not a warm paper one. Every token keeps the name the rest
+   of the codebase already uses, so pages follow the new system without
+   needing per-file color edits.
+
+   Signature device: dashed hairline frames with "+" registration marks
+   (.frame), hairline rules that carry their own label (.rule-label), and
+   monospaced uppercase eyebrows (.eyebrow).
    ═══════════════════════════════════════════════════════════ */
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f5efe7;
-  --color-sand: #ede4d6;
-  --color-cream: #fbf7f1;
-  --color-card: #ffffff;
-  --color-clay: #f1e9dd;
-  --color-line: #e7dccd;
-  --color-liness: #efe7da;
-  --color-rule: #c9b494;
-  --color-ink: #241b13;
-  --color-cocoa: #6e6153;
-  --color-dim: #a09282;
-  --color-accent: #b4602c;
-  --color-accentd: #a55728;
-  --color-ember: #d98546;
-  --color-peach: #f7e5d4;
-  --color-rust: #8a4a22;
-  --color-leaf: #3e7d4f;
-  --color-denim: #3b6ea5;
-  --color-plum: #7a5aa8;
-  --color-brick: #b0433c;
-  --color-honey: #a97b1f;
-  --color-coffee: #221a13;
-  --color-bean: #291f17;
-  --color-bark: #322619;
-  --color-roast: #46372a;
-  --color-foam: #f5eee3;
-  --color-steam: #b5a28c;
-  --color-dimdk: #7d6c5a;
+  /* ── dark graphite surfaces (the default) ── */
+  --color-paper: #0e0f10;
+  --color-sand: #121314;
+  --color-cream: #17191b;
+  --color-card: #141516;
+  --color-clay: #1d2023;
+  --color-line: #2a2d31;
+  --color-liness: #202325;
+  --color-rule: #3f454a;
+  --color-ink: #eceef0;
+  --color-cocoa: #a2a8ad;
+  --color-dim: #71787e;
+
+  /* ── hero horizon ridges (see HorizonBackdrop.tsx) ──
+     far catches the sky, near sinks back into paper. Held a few steps
+     above --color-paper on purpose: on a #0e0f10 page a ridge that is
+     only one value darker simply disappears. */
+  --ridge-far: #2b343a;
+  --ridge-mid: #1d2429;
+  --ridge-near: #141a1e;
+  --star: #eceef0;
+
+  /* ── signal green family ── */
+  --color-accent: #4ade80;
+  --color-accentd: #22c55e;
+  --color-ember: #86efac;
+  --color-peach: #10241a;
+  --color-rust: #7ee7a4;
+  /* text that sits on a filled accent surface - near-black on the bright
+     green of dark mode, white on the deeper green of light mode */
+  --color-accentfg: #07150c;
+
+  /* ── category hues: cool, desaturated, used for badges and charts ── */
+  --color-leaf: #4ade80;
+  --color-denim: #60a5fa;
+  --color-plum: #a78bfa;
+  --color-brick: #f87171;
+  --color-honey: #fbbf24;
+
+  /* ── the island family (code panels, closing CTA, footer, dark bands) ──
+     In light mode these are real graphite. In dark mode they lift *above*
+     the page instead of sinking below it, because a band one step darker
+     than #0e0f10 is simply invisible. */
+  --color-coffee: #121415;
+  --color-bean: #171a1c;
+  --color-bark: #1d2124;
+  --color-roast: #2b3035;
+  --color-foam: #eceef0;
+  --color-steam: #9aa1a7;
+  --color-dimdk: #6b7280;
 
   /* next/font declares --font-jakarta, --font-inter and --font-jbmono on <html>
      and ships the files from our own origin; the old family names stay as the
@@ -42,9 +72,9 @@
   --font-sans: var(--font-inter), "Inter", -apple-system, sans-serif;
   --font-mono: var(--font-jbmono), "JetBrains Mono", ui-monospace, monospace;
 
-  --shadow-soft: 0 4px 16px -6px rgba(58, 40, 22, 0.1);
-  --shadow-lift: 0 16px 44px -16px rgba(58, 40, 22, 0.22);
-  --shadow-dark: 0 26px 60px -24px rgba(34, 26, 19, 0.55);
+  --shadow-soft: 0 4px 18px -8px rgba(0, 0, 0, 0.55);
+  --shadow-lift: 0 18px 46px -18px rgba(0, 0, 0, 0.7);
+  --shadow-dark: 0 26px 60px -24px rgba(0, 0, 0, 0.75);
 
   --ease-silk: cubic-bezier(0.22, 0.8, 0.36, 1);
 
@@ -71,63 +101,102 @@
   }
 }
 
-/* ── dark theme: remap the warm surface + text tokens ─────────
+/* ── light theme: remap the surface + text tokens ───────────────
    Utilities compile to var(--color-x), so overriding the custom
-   properties under .dark flips the whole site in one cascade. */
-.dark {
-  --color-paper: #100c08;
-  --color-sand: #17120c;
-  --color-cream: #1d1710;
-  --color-card: #16110b;
-  --color-clay: #2a2218;
-  --color-line: #2e2619;
-  --color-liness: #241d14;
-  --color-rule: #57472f;
-  --color-ink: #f5eee3;
-  --color-cocoa: #bdae99;
-  --color-dim: #857461;
-  --color-accent: #dd8a4e;
-  --color-accentd: #e89b60;
-  --color-ember: #e59a5f;
-  --color-peach: #33230f;
-  --color-rust: #f0a878;
-  --color-leaf: #57b06e;
-  --color-denim: #6ba3d6;
-  --color-plum: #a98fd6;
-  --color-brick: #d9695f;
-  --color-honey: #e0b64a;
-}
-.dark body { background: var(--color-paper); }
-.dark ::selection { background: rgba(221, 138, 78, 0.3); }
-.dark .hero-glow {
-  background:
-    radial-gradient(640px 380px at 12% 0%, rgba(221, 138, 78, 0.14), transparent 70%),
-    radial-gradient(700px 420px at 88% 10%, rgba(180, 96, 44, 0.12), transparent 70%),
-    radial-gradient(900px 480px at 50% 118%, rgba(122, 90, 168, 0.12), transparent 70%);
-}
-.dark .hero-pattern {
-  background-image:
-    linear-gradient(rgba(221, 190, 150, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(221, 190, 150, 0.05) 1px, transparent 1px);
-}
-.dark .tl-phase {
-  color: color-mix(in srgb, var(--pc) 78%, #f5eee3);
-  background: color-mix(in srgb, var(--pc) 16%, #17120c);
-}
-.dark .tl-phase.is-active { background: color-mix(in srgb, var(--pc) 26%, #17120c); }
+   properties under .light flips the whole site in one cascade.
+   Dark is the default, so the unclassed document needs no remap;
+   .dark is kept as an alias for anything that still sets it. */
+.light {
+  --color-paper: #f7f8f8;
+  --color-sand: #f0f1f2;
+  --color-cream: #fdfdfd;
+  --color-card: #ffffff;
+  --color-clay: #e9ebee;
+  --color-line: #d8dde0;
+  --color-liness: #e4e7ea;
+  --color-rule: #b6bcc2;
+  --color-ink: #0f1214;
+  --color-cocoa: #4b5158;
+  --color-dim: #868d94;
+  --color-accent: #16a34a;
+  --color-accentd: #15803d;
+  --color-ember: #22c55e;
+  --color-peach: #dcfce7;
+  --color-rust: #15803d;
+  --color-accentfg: #ffffff;
+  --color-leaf: #16a34a;
+  --color-denim: #2563eb;
+  --color-plum: #7c3aed;
+  --color-brick: #dc2626;
+  --color-honey: #b45309;
+  --color-coffee: #101112;
+  --color-bean: #16181a;
+  --color-bark: #1d2023;
+  --color-roast: #2a2d31;
+  --color-foam: #eceef0;
+  --color-steam: #9aa1a7;
+  --color-dimdk: #9aa1a7;
 
-html { scroll-behavior: smooth; overflow-x: clip; }
+  /* the horizon goes pale with everything else: a light-mode hero should not
+     carry three bands of near-black across the page */
+  --ridge-far: #e4e8ea;
+  --ridge-mid: #d6dbdf;
+  --ridge-near: #c8cfd4;
+  --star: #b6bcc2;
+
+  --shadow-soft: 0 4px 18px -10px rgba(15, 18, 20, 0.12);
+  --shadow-lift: 0 18px 46px -20px rgba(15, 18, 20, 0.2);
+  --shadow-dark: 0 26px 60px -24px rgba(15, 18, 20, 0.3);
+}
+.light body { background: var(--color-paper); }
+.light ::selection { background: rgba(22, 163, 74, 0.2); }
+.light .hero-glow {
+  background:
+    radial-gradient(640px 380px at 12% 0%, rgba(34, 197, 94, 0.1), transparent 70%),
+    radial-gradient(700px 420px at 88% 10%, rgba(15, 23, 42, 0.05), transparent 70%),
+    radial-gradient(900px 480px at 50% 118%, rgba(96, 165, 250, 0.07), transparent 70%);
+}
+.light .frame::before, .light .frame::after { color: var(--color-rule); }
+.light .tl-phase {
+  color: color-mix(in srgb, var(--pc) 72%, #0f1214);
+  background: color-mix(in srgb, var(--pc) 10%, white);
+}
+.light .tl-phase.is-active { background: color-mix(in srgb, var(--pc) 18%, white); }
+
+html { scroll-behavior: smooth; overflow-x: clip; color-scheme: dark; }
+html.light { color-scheme: light; }
+/* theme-aware hairline colour for the page background grids */
+html { --gl: rgba(236, 238, 240, 0.055); }
+html.light { --gl: rgba(15, 18, 20, 0.05); }
 body { @apply bg-paper text-ink font-sans antialiased; overflow-x: clip; }
 
-/* ── display typography polish (Plus Jakarta Sans) ──────────
-   headings wrap evenly instead of orphaning one word; large
-   extrabold type gets slightly open leading via the scale */
+/* ── display typography polish ────────────────────────────────
+   headings wrap evenly instead of orphaning one word */
 h1, h2 { text-wrap: balance; }
 h3, h4 { text-wrap: pretty; }
 p { text-wrap: pretty; }
 .font-display { text-rendering: optimizeLegibility; font-variant-numeric: tabular-nums; }
-::selection { background: rgba(180, 96, 44, 0.22); }
+::selection { background: rgba(74, 222, 128, 0.26); }
 :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 6px; }
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 100;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--color-coffee);
+  color: var(--color-foam);
+  font-weight: 700;
+  text-decoration: none;
+  transform: translateY(calc(-100% - 24px));
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
 /* text fields never get the outline box - their surrounding pill shows focus instead */
 input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 
@@ -146,6 +215,65 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   .panel-h-lg { font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: -.016em; }
 }
 
+/* ── signature: dashed frame with registration marks ──────────
+   A hairline dashed border plus a small "+" at two opposite corners,
+   drawn with pseudo-elements so it costs no extra markup. Use on panels
+   and shelves that should read as a measured field rather than a card. */
+.frame {
+  position: relative;
+  border: 1px dashed var(--color-line);
+  border-radius: 14px;
+}
+.frame::before, .frame::after {
+  content: "+";
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  color: var(--color-rule);
+  pointer-events: none;
+}
+.frame::before { top: -7px; left: -6px; }
+.frame::after { bottom: -7px; right: -6px; }
+
+/* ── signature: hairline rule that carries its own label ──────
+   Replaces a plain section divider when the divider should say what
+   the section is. The label sits on the line, not above it. */
+.rule-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--color-dim);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.rule-label::before, .rule-label::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--color-line);
+}
+.rule-label::after { flex: none; width: 0; }
+
+/* ── signature: monospaced eyebrow ──────────────────────────── */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+/* a panel that scrolls without a visible bar */
+.panel-scroll { scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }
+.panel-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+.panel-scroll::-webkit-scrollbar-thumb { background: var(--color-line); border-radius: 99px; }
+
 /* ── edge-faded marquee track ─────────────────────────────── */
 .marq-mask {
   mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
@@ -156,10 +284,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 
 /* ── hero grid pattern overlay ────────────────────────────── */
 .hero-pattern {
-  position: absolute; inset: 0; z-index: 0; opacity: 0.55; pointer-events: none;
+  position: absolute; inset: 0; z-index: 0; opacity: 0.6; pointer-events: none;
   background-image:
-    linear-gradient(rgba(70, 48, 26, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(70, 48, 26, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(236, 238, 240, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(236, 238, 240, 0.045) 1px, transparent 1px);
   background-size: 46px 46px;
   mask-image: radial-gradient(720px 430px at 76% 34%, #000, transparent 75%);
   -webkit-mask-image: radial-gradient(720px 430px at 76% 34%, #000, transparent 75%);
@@ -167,10 +295,107 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .hero-glow {
   position: absolute; inset: -220px 0 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(640px 380px at 12% 0%, rgba(217, 133, 70, 0.16), transparent 70%),
-    radial-gradient(700px 420px at 88% 10%, rgba(180, 96, 44, 0.12), transparent 70%),
-    radial-gradient(900px 480px at 50% 118%, rgba(122, 90, 168, 0.07), transparent 70%);
+    radial-gradient(640px 380px at 12% 0%, rgba(74, 222, 128, 0.12), transparent 70%),
+    radial-gradient(700px 420px at 88% 10%, rgba(34, 197, 94, 0.07), transparent 70%),
+    radial-gradient(900px 480px at 50% 118%, rgba(96, 165, 250, 0.06), transparent 70%);
 }
+
+/* ── hero stage: the dashboard embedded in a landscape ─────────
+   Three nested rectangles, the way ossium frames its console: a dashed
+   hairline with "+" registration marks drawn on the page background, the
+   landscape photograph inset inside that, and the dashboard sitting on the
+   photograph with room around it so the image shows on every side. */
+.hero-stage { position: relative; }
+.hero-field {
+  border-radius: 22px;
+  padding: clamp(9px, 1.3vw, 15px);
+  /* the dotted registration line: white dots on the night page */
+  border-color: color-mix(in srgb, var(--color-foam) 34%, transparent);
+}
+.hero-field::before, .hero-field::after, .hero-field .mark {
+  color: color-mix(in srgb, var(--color-foam) 46%, transparent);
+}
+/* on the paper page the same registration is drawn in ink instead */
+.light .hero-field { border-color: color-mix(in srgb, var(--color-ink) 30%, transparent); }
+.light .hero-field::before, .light .hero-field::after, .light .hero-field .mark {
+  color: color-mix(in srgb, var(--color-ink) 42%, transparent);
+}
+.hero-photo {
+  position: relative; overflow: hidden; border-radius: 15px;
+  border: 1px solid var(--color-line);
+  background: var(--color-bean);
+}
+/* only the scene layer, never the avatars inside the board */
+.hero-scene { position: absolute; inset: 0; }
+.hero-scene img {
+  width: 100%; height: 100%; display: block;
+  object-fit: cover; object-position: 50% 100%; opacity: .92;
+}
+/* a paper scrim so the photograph never fights the board on top of it */
+.hero-photo::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--color-paper) 40%, transparent) 0%, transparent 24%,
+    transparent 58%, color-mix(in srgb, var(--color-paper) 46%, transparent) 100%);
+}
+.hero-photo-inner { position: relative; z-index: 1; padding: clamp(13px, 2.6vw, 38px) clamp(13px, 2.6vw, 34px); }
+/* the six scenes are night-weighted photographs; on a light page they would
+   read as a dark slab, so lay them over a pale ground and wash them up */
+.light .hero-photo { background: var(--color-sand); }
+/* the dawn photograph is already a light scene, so the light theme only
+   lifts it a little rather than washing it out */
+.light .hero-scene img {
+  opacity: .86;
+  filter: saturate(.92) brightness(1.06) contrast(.94);
+}
+
+/* ── the line around the dashboard ────────────────────────────
+   The board sits on the photograph inside one steady hairline: white in the
+   dark theme, ink in the light one. Nothing glows and nothing travels round
+   it - the ring only separates the board from the landscape behind it. */
+.board-ring { position: relative; }
+.board-ring::before {
+  content: ""; position: absolute; inset: -9px; border-radius: 20px;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--color-foam) 33%, transparent);
+}
+@media (min-width: 768px) {
+  .board-ring::before { inset: -13px; border-radius: 22px; }
+}
+.light .board-ring::before {
+  border-color: color-mix(in srgb, var(--color-coffee) 24%, transparent);
+}
+
+/* ── the stage on a phone ─────────────────────────────────────
+   Three nested rectangles cost a phone about 90px of width, which leaves
+   the console too narrow to read its own rows. Below 700px the landscape
+   goes edge to edge and the console sits inside it with one small inset,
+   so the window gets the whole screen and the photograph still shows
+   above and below it. The registration dashes are a desktop detail and
+   are dropped rather than squeezed. */
+@media (max-width: 700px) {
+  .hero-stage > div { padding-left: 0; padding-right: 0; }
+  .hero-field { border: 0; border-radius: 0; padding: 0; }
+  .hero-field::before, .hero-field::after, .hero-field .mark { display: none; }
+  .hero-photo { border-left: 0; border-right: 0; border-radius: 0; }
+  .hero-photo-inner { padding: 15px 13px 17px; }
+  .board-ring::before { inset: -7px; border-radius: 15px; }
+  /* the rail scrolls, so say so instead of cutting a label in half */
+  .hero-rail {
+    -webkit-mask-image: linear-gradient(90deg, #000 0 calc(100% - 30px), transparent 100%);
+            mask-image: linear-gradient(90deg, #000 0 calc(100% - 30px), transparent 100%);
+  }
+}
+
+/* the other two corners of the registration frame: .frame draws the
+   top-left and bottom-right with pseudo-elements, and the markup adds a
+   pair of marks for the corners it cannot reach. */
+.frame .mark {
+  position: absolute; font-family: var(--font-mono); font-size: 13px;
+  line-height: 1; font-weight: 500; color: var(--color-rule); pointer-events: none;
+}
+.frame .mark.tr { top: -7px; right: -6px; }
+.frame .mark.bl { bottom: -7px; left: -6px; }
 
 /* ── logocell float (per-cell rotation + delay via CSS vars) ─ */
 .logocell {
@@ -180,17 +405,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 }
 .logocell:hover { animation-play-state: paused; transform: rotate(0deg) scale(1.07); }
 
-/* ── code panel (dark warm island) ────────────────────────── */
-.t-k { color: #ffa657; } .t-s { color: #a8d5a2; } .t-f { color: #e8b4c8; }
-.t-c { color: var(--color-dimdk); font-style: italic; } .t-g { color: #7ee2a8; }
-.t-y { color: #ffd166; } .t-o { color: #f2a35c; }
+/* ── code panel (graphite island, GitHub-dark syntax hues) ─── */
+.t-k { color: #79c0ff; } .t-s { color: #a5d6ff; } .t-f { color: #d2a8ff; }
+.t-c { color: var(--color-dimdk); font-style: italic; } .t-g { color: #7ee787; }
+.t-y { color: #e3b341; } .t-o { color: #ffa657; }
 .cp-line { display: flex; gap: 16px; white-space: pre-wrap; word-break: break-word; }
 .cp-line::before { content: attr(data-n); color: var(--color-dimdk); user-select: none; min-width: 16px; text-align: right; }
-.caret { display: inline-block; width: 8px; height: 15px; background: #7ee2a8; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+.caret { display: inline-block; width: 8px; height: 15px; background: #7ee787; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
 .mock-lights i { display: block; width: 10px; height: 10px; border-radius: 50%; }
-.mock-lights i:nth-child(1) { background: #e8896f; }
-.mock-lights i:nth-child(2) { background: #e5c07b; }
-.mock-lights i:nth-child(3) { background: #9dc88d; }
+.mock-lights i:nth-child(1) { background: #f87171; }
+.mock-lights i:nth-child(2) { background: #e3b341; }
+.mock-lights i:nth-child(3) { background: #7ee787; }
 
 /* ── timeline (Gantt) ─────────────────────────────────────── */
 .tl-track {
@@ -202,13 +427,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   position: absolute; top: 7px; bottom: 7px; border-radius: 999px;
   display: flex; align-items: center; padding: 0 12px; overflow: hidden;
   font-size: 10.5px; font-weight: 700; white-space: nowrap;
-  color: color-mix(in srgb, var(--pc) 78%, #241b13);
-  background: color-mix(in srgb, var(--pc) 9%, white);
+  color: color-mix(in srgb, var(--pc) 82%, #eceef0);
+  background: color-mix(in srgb, var(--pc) 16%, #17191b);
   border: 1px dashed color-mix(in srgb, var(--pc) 45%, transparent);
   transition: transform 0.18s var(--ease-silk), box-shadow 0.18s;
 }
 .tl-phase:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); z-index: 3; }
-.tl-phase.is-active { border-style: solid; border-width: 1.5px; background: color-mix(in srgb, var(--pc) 16%, white); }
+.tl-phase.is-active { border-style: solid; border-width: 1.5px; background: color-mix(in srgb, var(--pc) 26%, #17191b); }
 .tl-phase.is-done { opacity: 0.45; }
 .tl-dot::before {
   content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none;
@@ -245,7 +470,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 /* ── misc component-ish bits ──────────────────────────────── */
 .select-warm {
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a09282' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2371787e' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 14px center;
 }
 .faq details summary { list-style: none; cursor: pointer; }
@@ -255,8 +480,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .faq details[open] summary { border-bottom: 1px solid var(--color-liness); }
 .reveal { animation: riseIn 0.6s var(--ease-silk) both; }
 
-/* ── orbit glow — a warm comet arc that travels along the border,
-   like the reference site's search bar, in cyrus ember/accent ── */
+/* ── orbit glow — a green comet arc that travels along the border ── */
 @property --orbit { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 @keyframes orbitSpin { to { --orbit: 360deg; } }
 
@@ -270,9 +494,9 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
   background: conic-gradient(from var(--orbit),
     transparent 0% 58%,
-    color-mix(in srgb, var(--color-ember) 48%, transparent) 72%,
+    color-mix(in srgb, var(--color-ember) 42%, transparent) 72%,
     var(--color-accent) 86%,
-    color-mix(in srgb, var(--color-ember) 48%, transparent) 94%,
+    color-mix(in srgb, var(--color-ember) 42%, transparent) 94%,
     transparent 100%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -286,7 +510,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .pulse-grid > :nth-child(3n+2)::after { animation-delay: -2.5s; }
 .pulse-grid > :nth-child(3n)::after { animation-delay: -5s; }
 
-/* ── site splash: one-time warm intro curtain ─────────────── */
+/* ── site splash: one-time intro curtain ──────────────────── */
 @keyframes splashLift { to { opacity: 0; transform: translateY(-18px); visibility: hidden; } }
 @keyframes splashPop { from { opacity: 0; transform: scale(.82); } to { opacity: 1; transform: none; } }
 @keyframes splashWord { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
@@ -303,15 +527,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* ── footer LED strip: hard-coded vivid colors (theme tokens are
-   too muddy in light mode), 4px core + soft bloom underneath ─── */
+/* ── footer strip: one green sweep, 4px core + soft bloom ──── */
 @keyframes footFlow { to { background-position: 200% 0; } }
 .footer-arc {
   position: relative;
-  height: 4px;
+  height: 2px;
   background: linear-gradient(90deg,
-    #ff6b35, #ffb02e, #ffd94a,
-    #46a5ff, #9b5cff, #ff4d6d, #ff6b35);
+    var(--color-accentd), var(--color-accent), var(--color-ember),
+    var(--color-accent), var(--color-accentd));
   background-size: 200% 100%;
   animation: footFlow 8s linear infinite;
 }
@@ -322,10 +545,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
   background-size: inherit;
   animation: inherit;
   filter: blur(7px);
-  opacity: .55;
+  opacity: .5;
 }
-/* the home closing CTA is the same coffee as the footer - drop the
-   gap so the LED arc reads as the seam between them */
+/* the home closing CTA is the same graphite as the footer - drop the
+   gap so the strip reads as the seam between them */
 .cta-close + footer { margin-top: 0; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -7,7 +7,9 @@
 import { Link } from "@/lib/router";
 import { fmt } from "../lib/util";
 import { btn, Word } from "../components/ui";
-import { REPOS } from "../data/repos";
+import { REPOS, CATEGORIES } from "../data/repos";
+import { PROGRAMS } from "../data/orgs";
+import { CRAWL } from "../data/crawlStats";
 import { W, Pill, Ico, Check, Tile, CenterHead, GridBG, PlatCTA, Rule } from "../components/plat";
 import CompanyBand from "../components/CompanyBand";
 
@@ -31,10 +33,10 @@ const D: Record<string, string> = {
 
 /* ── section 2: numbered workflow (image 1) ── */
 const FLOW: [string, string, string, string][] = [
-  ["bookmark", "rust", "Saved shelf", "Star a repo, org or hackathon once - everything lands on one board, grouped by shelf."],
-  ["eye", "honey", "Watchlist statuses", "researching › preparing › applied. One click advances an org through your pipeline."],
-  ["clock", "plum", "Deadline tracking", "Live hackathon windows and application dates, sorted soonest-first, refreshed fortnightly."],
-  ["gauge", "leaf", "Match scores", "Your stack, scored against 6,600+ accepted program projects - not against a guess."],
+  ["bookmark", "rust", "Saved issues", "Save an issue once and it lands on your board with its labels, its age and the repository it belongs to."],
+  ["eye", "honey", "Working stages", "saved › interested › working on it › completed. One click moves an issue through your pipeline."],
+  ["calendar", "plum", "Program windows", "The calendar says which phase each program is in today, from the organizer's own published dates."],
+  ["gauge", "leaf", "Org fit", "Language mix, open-issue load, review latency and five years of accepted projects - per organization, from GitHub."],
 ];
 function Workflow() {
   return (
@@ -45,14 +47,14 @@ function Workflow() {
           Your prep lives on the platform. <span className="text-accent">Not across twelve tabs.</span>
         </h2>
         <p className="text-cocoa text-[15.5px] leading-[1.7] mt-6">
-          Sign in once and cyrus keeps the whole picture in one place: what you saved, what
-          you're watching, what's due, and how ready you actually are for each program.
+          Sign in once and cyrus keeps the whole picture in one place: which issues you took,
+          what stage each is at, which orgs you follow, and which program window is still open.
         </p>
         <ul className="grid gap-3 list-none mt-7">
           {[
-            "Every saved item keeps its live GitHub stats - stars, last push, open issues.",
-            "Watchlist orgs feed the mentor finder and the matcher automatically.",
-            "Nothing leaves your browser: the board is localStorage, not a database.",
+            "Every issue keeps its real GitHub state - labels, last touch, and the live thread.",
+            "Saved organizations feed the profile pages, so you see an org's load before you commit.",
+            "The board lives in your browser first; a real session syncs it to private rows you own.",
           ].map((x) => (
             <li key={x} className="flex items-start gap-3 text-[14.5px] text-cocoa leading-[1.55]">
               <span className="mt-[7px] w-[7px] h-[7px] rounded-full bg-leaf shrink-0 shadow-[0_0_0_3px_rgba(62,125,79,.14)]" />{x}
@@ -87,7 +89,7 @@ function Workflow() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 mt-7 max-[520px]:grid-cols-1">
-          <span className="flex items-center justify-center gap-2 bg-card border border-line rounded-full px-4 py-2.5 text-[12.5px] font-semibold text-cocoa"><Ico d={D.shield} size={13} />Parses offline, in your browser</span>
+          <span className="flex items-center justify-center gap-2 bg-card border border-line rounded-full px-4 py-2.5 text-[12.5px] font-semibold text-cocoa"><Ico d={D.shield} size={13} />Real GitHub threads only</span>
           <span className="flex items-center justify-center gap-2 bg-card border border-line rounded-full px-4 py-2.5 text-[12.5px] font-semibold text-cocoa"><Ico d={D.eye} size={13} />Your board stays yours</span>
         </div>
       </div>
@@ -97,11 +99,11 @@ function Workflow() {
 
 /* ── section 3: always know where you stand (image 2) ── */
 const STAND: [string, string, string, string][] = [
-  ["grid", "plum", "Overview tiles", "Saved projects, followed orgs, combined stars and the languages your board actually covers - at a glance."],
-  ["bookmark", "denim", "Saved projects", "Every starred repo with its live shelf, stars and a catalog-activity bar, removable in one tap."],
-  ["layers", "honey", "The archive now", "A coffee-dark strip showing exactly how many projects, orgs and program years the matcher is scoring against."],
-  ["check", "leaf", "Next steps", "A five-row checklist that ticks itself as you save, follow, watch, match and compare. No mystery about what to do next."],
-  ["users", "rust", "Mentor finder", "Mentor handles and contact channels harvested from accepted-project records, cached so the browser never scrapes."],
+  ["grid", "plum", "Overview", "Issues in flight, repositories you follow, the languages your board actually covers and the one thing to do next - on one screen."],
+  ["bookmark", "denim", "My Issues", "Every issue you saved, grouped by stage: saved, interested, working on it, completed. Each row links to the live thread."],
+  ["layers", "honey", "The archive now", "A coffee-dark strip showing exactly how many open issues, projects, orgs and program years the index is built on."],
+  ["check", "leaf", "Next steps", "A short checklist that ticks itself as you save an issue, follow a repo and pick a program. No mystery about what to do next."],
+  ["users", "rust", "Organization profiles", "Signals before you commit: language mix, live open-issue count and the projects that org has already accepted."],
 ];
 function Stand() {
   return (
@@ -113,8 +115,9 @@ function Stand() {
         </h2>
         <p className="text-cocoa text-[15px] leading-[1.75] mt-6">
           cyrus gives your season complete visibility from a single board. Instead of chasing
-          event pages, org READMEs and program docs across a fortnight, you instantly see what's
-          saved, what's due, which orgs fit your stack, and how close you are to applying.
+          issue threads, org READMEs and program docs across a fortnight, you instantly see what
+          you took, what stage it is at, which orgs are worth your time and how close you are to
+          applying.
         </p>
         <Link to="/dashboard" className={`${btn("primary", "lg")} mt-8`}>Open the dashboard</Link>
       </div>
@@ -199,13 +202,12 @@ function Collect() {
 
 /* ── section 5: the 12-week timeline (image 4) ── */
 const TL: [string, string, string][] = [
-  ["Day 0", "Pick the season", "GSoC, LFX, Outreachy or a hackathon - the program calendar shows the window you can still hit."],
-  ["Days 1–3", "Run the org matcher", "Drop your GitHub handle or resume; the matcher scores every archived org against what you build with."],
-  ["Days 3–7", "Shortlist five organizations", "Watchlist statuses track each one: researching, preparing, applied."],
-  ["Days 7–21", "Ship small real PRs", "The skills shelf hands you the exact rule packs, AGENTS.md files and MCP servers those orgs use."],
-  ["Days 21–35", "Start mentor conversations", "The mentor finder shows who mentors there and which channel they actually answer on."],
-  ["Days 35–56", "Draft with the archive", "Five years of accepted proposals by size, stack and difficulty become your structure."],
-  ["Days 56–70", "Apply, tracked", "Every deadline on one dashboard. No tab left un-refreshed."],
+  ["Day 0", "Pick the season", "GSoC, LFX, Outreachy or GSSoC - the program calendar shows the phase each one is in today and the window you can still hit."],
+  ["Days 1–3", "Shortlist five organizations", "Profile pages put an org's language mix, live open-issue count and accepted-project history on one screen."],
+  ["Days 3–10", "Take real issues", "Save the issues you want to work; each one carries its labels, its age and the link back to the live thread."],
+  ["Days 10–35", "Ship small merged PRs", "Move issues through working and done on your board. A merged pull request is the strongest line in any proposal."],
+  ["Days 35–56", "Draft with the archive", "Five years of accepted projects by size, stack and difficulty become your structure."],
+  ["Days 56–70", "Apply, tracked", "Every window on one calendar. No tab left un-refreshed."],
 ];
 function Timeline() {
   return (
@@ -233,12 +235,12 @@ function Timeline() {
 
 /* ── section 6: the full shelf grid ── */
 const SHELVES: [string, string, string, string, string][] = [
-  ["Skill catalog", "/projects", "grid", "rust", `${fmt(REPOS.length)} agent skills, Cursor rules, config packs and MCP servers across five curated shelves.`],
-  ["Organization profiles", "/organizations", "building", "denim", "Live GitHub signals plus five years of accepted projects, per org."],
-  ["Hackathon plans", "/hackathons", "flag", "brick", "Timelines, prizes, ideas and prep plans for every tracked event."],
-  ["Project archive", "/opensource", "layers", "leaf", "6,600+ accepted program projects, filterable by year, stack and difficulty."],
-  ["Learning resources", "/resources", "check", "honey", "58 company-grade courses and docs, each with an in-site breakdown."],
-  ["Co-pilot", "/platform/nova", "spark", "plum", "The site's one AI: stack matches, deadline answers and build plans."],
+  ["Skill catalog", "/skills", "grid", "rust", `${fmt(REPOS.length)} agent skills, Cursor rules, config packs and MCP servers across ${CATEGORIES.length} curated shelves.`],
+  ["Open issues", "/dashboard/issues", "bookmark", "denim", `${fmt(CRAWL.issues)} issues crawled live from GitHub on ${CRAWL.crawledAt}, with their labels and age.`],
+  ["Organization profiles", "/organizations", "building", "plum", "Live GitHub signals plus five years of accepted projects, per org."],
+  ["Program calendar", "/projects", "calendar", "honey", `${PROGRAMS.length} mentored programs and contribution seasons, each in its published phase.`],
+  ["Project archive", "/projects", "layers", "leaf", "6,600+ accepted program projects, filterable by year, stack and difficulty."],
+  ["Your board", "/dashboard", "gauge", "brick", "The issues you took, the repositories you follow and the next step on each."],
 ];
 function Shelves() {
   return (
@@ -291,7 +293,7 @@ export default function Features() {
           <h2 className="font-display font-extrabold tracking-[-.02em] text-[clamp(26px,3.2vw,38px)]">
             Ready to see it on <Word>your</Word> stack?
           </h2>
-          <PlatCTA to="/dashboard" label="Open the dashboard" also={["/platform/nova", "Meet Co-pilot"]} />
+          <PlatCTA to="/dashboard" label="Open the dashboard" also={["/platform/how", "See how the board works"]} />
         </section>
         <CompanyBand />
       </div>

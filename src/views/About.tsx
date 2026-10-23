@@ -8,8 +8,7 @@ import type { ReactNode } from "react";
 import { Link } from "@/lib/router";
 import { REPOS, CATEGORIES } from "../data/repos";
 import { ORGS, PROGRAMS } from "../data/orgs";
-import { HACKS } from "../data/hackathons";
-import { RESOURCES } from "../data/resources";
+import { CRAWL } from "../data/crawlStats";
 import { avatarOf, fmt } from "../lib/util";
 import { btn, Word, SectionTag, OrgImg, Logo } from "../components/ui";
 import { Rule } from "../components/plat";
@@ -74,42 +73,30 @@ function Orbit() {
 const CAP_IC = { fill: "none", stroke: "currentColor", strokeWidth: 1.9, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const capIcon = (d: string) => <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden {...CAP_IC}><path d={d} /></svg>;
 const CAPS: [string, string, string, string, ReactNode, string][] = [
-  ["Skill catalog", `/projects`, "text-rust bg-peach border-accent/20",
+  ["Skill catalog", `/skills`, "text-rust bg-peach border-accent/20",
     `${REPOS.length} agent skills, Cursor rules, AGENTS.md configs and MCP servers across ${CATEGORIES.length} shelves - ranked by live GitHub stats, never by hype.`,
     capIcon("M4 5h7v7H4zM13 5h7v4h-7zM13 12h7v7h-7zM4 15h7v4H4z"),
     "Every shelf is filtered by what the repo itself declares - SKILL.md, rules files, MCP manifests - and each card carries stars, forks, last-push and license from the public API."],
-  ["Hackathon plans", "/hackathons", "text-denim bg-denim/10 border-denim/25",
-    `All ${HACKS.length} tracked hackathons with timeline, prize, eligibility, idea list and a step-by-step prep plan - on one page.`,
+  ["Open issues, counted", "/dashboard/issues", "text-denim bg-denim/10 border-denim/25",
+    `${fmt(CRAWL.issues)} open issues in ${fmt(CRAWL.reposWithIssues)} of the ${fmt(CRAWL.catalogRepos)} catalog repositories, crawled ${CRAWL.crawledAt}.`,
     capIcon("M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"),
-    "Dates are checked against the organizer's official page or Devpost before shipping. Unconfirmed dates carry a clearly-labelled estimate and refresh every fortnight."],
+    "An issue is only listed when GitHub still reports it open. Age, labels and the repository's own star count travel with it, so a stale invitation is obvious before you spend an evening on it."],
   ["Organization profiles", "/organizations", "text-leaf bg-leaf/10 border-leaf/25",
     "Contributor pulse before you commit: language mix, open issues, review latency, past accepted projects and who actually mentors there.",
     capIcon("M4 21V6l8-3v18M12 21h8V10l-8-2.4M7 10h1M7 14h1M7 18h1M16 13h1M16 17h1M2 21h20"),
     "Profiles join our live GitHub directory with the accepted-project archive, so a page shows both the code signal and the program history for the same organization."],
-  ["Program calendar", "/organizations", "text-plum bg-plum/10 border-plum/25",
-    `GSoC, Outreachy, LFX, ESOC, MLH, GSSoC, KDE, Summer of Bitcoin, Nexus Spring of Code and Hacktoberfest - windows and phases on one timeline.`,
+  ["Program calendar", "/projects", "text-plum bg-plum/10 border-plum/25",
+    `GSoC, Outreachy, LFX, ESOC, MLH Fellowship, GSSoC, KDE, Summer of Bitcoin, Nexus Spring of Code, 24 Pull Requests and Hacktoberfest - ${PROGRAMS.length} tracked windows on one timeline.`,
     capIcon("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3.5 2"),
-    "Each program page shows the phase you are actually in today - org applications, student applications, community bonding, coding period - with stipend bands and slot counts."],
-  ["Project archive", "/opensource", "text-honey bg-honey/12 border-honey/40",
+    "Each program page shows the phase you are actually in today - organization applications, participant applications, community bonding, coding period - with the window dates the organizer publishes."],
+  ["Project archive", "/projects", "text-honey bg-honey/12 border-honey/40",
     "6,600+ accepted program projects from 2022 to 2026, filterable by year, organization, stack and difficulty.",
     capIcon("M3 7l9-4 9 4v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7ZM3 7l9 4 9-4M12 11v10"),
     "Pulled from each program's public API by our refresh pipeline - titles, orgs, mentors, tech tags and descriptions, never hand-typed."],
-  ["Learning resources", "/resources", "text-brick bg-brick/10 border-brick/25",
-    `${RESOURCES.length} courses, docs and labs engineers actually recommend - from Google, Meta, Microsoft, GitHub, NVIDIA and OpenAI.`,
-    capIcon("M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm0 5h12M9 21V8"),
-    "Every card opens an in-site breakdown first - what it is, why it earns a spot, how to use it with cyrus - before you click out to the provider."],
-  ["Personal dashboard", "/dashboard", "text-rust bg-peach border-accent/20",
-    "Saved repos, followed orgs, a watchlist with statuses, live deadlines and a reading list tuned to the stack you actually saved.",
+  ["Your board", "/dashboard", "text-rust bg-peach border-accent/20",
+    "Issues you are tracking through saved, interested, working and done; the repositories you follow; the languages that come out of both.",
     capIcon("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-8.5 3.5A9.9 9.9 0 0 1 2 12C2 6.5 6.5 2 12 2s10 4.5 10 10a9.9 9.9 0 0 1-1.5 5.5"),
-    "Sign-in is demo-grade on purpose: everything lives in your browser's localStorage. No email, no tracking pixel, no spam."],
-  ["Org matcher", "/dashboard/matcher", "text-denim bg-denim/10 border-denim/25",
-    "Drop your GitHub username or resume; the matcher scores every archived org against the stack you actually know.",
-    capIcon("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm3.5 5.5-2 5-5 2 2-5 5-2Z"),
-    "Parsing happens offline in your browser - the resume text never leaves the page, and scores come from archived project tech tags, not guesses."],
-  ["Mentor finder", "/dashboard/mentors", "text-leaf bg-leaf/10 border-leaf/25",
-    "Mentor names and contact channels distilled from accepted-project records, cached so the browser never scrapes.",
-    capIcon("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"),
-    "GSoC selection is complete for the season, so this data updates on the archive cadence - the page says exactly when it was last refreshed."],
+    "Sign-in is demo-grade on purpose: everything lives in your browser's localStorage until a session backend is attached. No email, no tracking pixel, no spam."],
 ];
 function Capabilities() {
   return (
@@ -148,8 +135,8 @@ function Capabilities() {
 /* ── principles ───────────────────────────────────────────── */
 const PRINCIPLES: [string, string][] = [
   ["Verify, don't vibe.", "Every number starts from a public API snapshot regenerated by a script - stars, forks, open issues, license, last push. Nothing is typed by hand, and estimates are labelled as estimates."],
-  ["One keystroke over twelve feeds.", "A hackathon's timeline, ideas and stack prep sit on one page. An org's contributors, review latency and accepted projects sit on another. The search bar knows both."],
-  ["Credit where it's due.", "Official org logos come from GitHub itself, hackathon cards link straight to the organizer's registration page, and every resource card breaks down before it clicks out."],
+  ["One page over twelve tabs.", "An issue carries its labels, its age and the repository it belongs to; an org carries its contributors, review latency and accepted projects. Both answer the same question - can I start this weekend - without a second tab."],
+  ["Credit where it's due.", "Official org logos come from GitHub itself, every issue and pull request links to the real thread on github.com, and program pages name the organizer rather than paraphrase them."],
   ["Free, and visibly so.", "No account to browse, no email to save, no dark patterns. Demo sign-in keeps everything in your browser's localStorage, and the whole index stays open."],
 ];
 
@@ -160,8 +147,8 @@ const FAQS: [string, string][] = [
    "A repo lands on a shelf if its own README says so: SKILL.md files for Agent Skills, .cursor/rules or mdc files for Cursor rules, AGENTS.md / DESIGN.md for configs, and an mcp server manifest or registry entry for MCP servers. Ambiguous repos go to the Dev Agents shelf."],
   ["Why rank by stars at all, if stars are hype?",
    "They're the only cross-repo signal that's public, historical and cheap to verify. We show forks, open issues and last-push beside every star count so a 200k repo that hasn't moved in a year doesn't pretend otherwise."],
-  ["How do you keep hackathon dates honest?",
-   `Every one of the ${HACKS.length} hackathons is checked against its official site or Devpost page before it ships. When an organizer hasn't published an exact date yet, the card carries a clearly-labelled estimate and we refresh it each fortnight.`],
+  ["How current are the open issues?",
+   `The issue index is a real crawl of GitHub's search API, last run ${CRAWL.crawledAt} across ${fmt(CRAWL.reposWithIssues)} repositories. An issue is listed only while GitHub still reports it open, but a repo can merge or close one between crawls - so every card links to the live thread and says how long ago it was touched.`],
   ["Can I list my own repository?",
    "Yes - save a bookmark on /projects for the submit flow we're shipping next: paste a GitHub URL, we enrich the metadata from the API, and your repo joins the review queue for the right shelf."],
   ["Is this affiliated with GitHub, Google or Anthropic?",
@@ -173,7 +160,7 @@ export default function About() {
     <>
       {/* ── manifesto hero + orbit ── */}
       <header className="relative overflow-hidden">
-        <span aria-hidden className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,rgba(180, 96, 44,.055)_1px,transparent_1px),linear-gradient(to_bottom,rgba(180, 96, 44,.055)_1px,transparent_1px)] [background-size:36px_36px] [mask-image:radial-gradient(760px_480px_at_68%_38%,#000_50%,transparent)]" />
+        <span aria-hidden className="absolute inset-0 pointer-events-none bg-[linear-gradient(to_right,var(--gl)_1px,transparent_1px),linear-gradient(to_bottom,var(--gl)_1px,transparent_1px)] [background-size:36px_36px] [mask-image:radial-gradient(760px_480px_at_68%_38%,#000_50%,transparent)]" />
         <div className={`${W} relative pt-[72px] pb-4 grid grid-cols-[1.05fr_.95fr] gap-10 items-center max-[1020px]:grid-cols-1`}>
           <div>
             <Pill>About cyrus.ai</Pill>
@@ -183,12 +170,12 @@ export default function About() {
               the agent era.
             </h1>
             <p className="text-cocoa text-[16.5px] leading-[1.7] max-w-[520px] mt-6">
-              Builders today juggle a dozen feeds to find one good skill, hackathon or mentored
-              program. We exist to make finding your next contribution simpler - and every
-              number behind that decision verifiable.
+              Contributors today juggle a dozen feeds to find one issue worth taking, one org that
+              reviews, or one program window still open. We exist to make finding your next
+              contribution simpler - and every number behind that decision verifiable.
             </p>
             <div className="flex flex-wrap gap-2.5 mt-8 max-w-[520px]">
-              {["Verified stats", "Official sources", "Live deadlines", "Accepted-project archive", "Free forever"].map((c) => (
+              {["Verified stats", "Official sources", "Live open issues", "Accepted-project archive", "Free forever"].map((c) => (
                 <span key={c} className="inline-flex items-center gap-2 bg-card border border-line rounded-full px-4 py-2 text-[13px] font-semibold text-ink shadow-soft">
                   <Check />{c}
                 </span>
@@ -218,18 +205,19 @@ export default function About() {
           </div>
           <div className="grid gap-4 text-cocoa text-[15.5px] leading-[1.75]">
             <p>
-              The tools moved: agents, skills, MCP servers, hackathon tracks that expect a working
-              demo by Sunday. The discovery layer didn't. Finding a trustworthy skill pack, an org
-              that reviews PRs in under three days, or a program window you can still hit means
-              twelve tabs, three Discords and a gut feeling.
+              The work moved: agents, skills, programs that expect a real merged pull request
+              before the application window closes. The discovery layer didn't. Finding a
+              beginner-labelled issue an org still has open, an org that reviews PRs in under three
+              days, or a program deadline you can still hit means twelve tabs, three Discords and a
+              gut feeling.
             </p>
             <p>
-              So we built the index we kept wishing for: {REPOS.length} repositories across{" "}
-              {CATEGORIES.length} shelves published by {ORGS.length} curated organizations, the{" "}
-              {PROGRAMS.length} mentored programs those orgs join every year, {fmt(6600)}+ accepted
-              program projects from 2022 to 2026, {RESOURCES.length} vetted learning resources and{" "}
-              {HACKS.length} hackathons with full prep plans - each with the boring-but-decisive
-              facts: stars, forks, open issues, language, license and last push.
+              So we built the index we kept wishing for: {fmt(CRAWL.issues)} open issues crawled
+              from {fmt(CRAWL.reposWithIssues)} repositories on {CRAWL.crawledAt}, a skill catalog of{" "}
+              {REPOS.length} repositories across {CATEGORIES.length} shelves published by {ORGS.length}{" "}
+              curated organizations, the {PROGRAMS.length} mentored programs those orgs join every
+              year and {fmt(6600)}+ accepted program projects from 2022 to 2026 - each with the
+              boring-but-decisive facts: stars, forks, open issues, language, license and last push.
             </p>
             <p>
               The directory is opinionated on purpose. A 67-skill pack by a solo builder sits next
@@ -269,14 +257,15 @@ export default function About() {
             Static stats come from a GitHub API snapshot dated <b className="text-ink">2026-10-02</b>, regenerated by a
             script that walks the seed list, refetches each repo and rewrites the dataset - nothing is typed by hand.
             Repo and organization pages then re-fetch contributors and language mixtures live, and fall back to
-            clearly-labelled deterministic estimates when the API is rate-limited. Hackathon entries are rebuilt from
-            official event pages and Devpost listings on the same cadence, and the accepted-project archive refreshes
-            from each program's public API.
+            clearly-labelled deterministic estimates when the API is rate-limited. The issue index is a separate crawl
+            of GitHub's search API, last run <b className="text-ink">{CRAWL.crawledAt}</b>, and the accepted-project
+            archive refreshes from each program's public API on the same cadence.
           </p>
           <ul className="text-cocoa text-[15px] leading-[1.75] grid gap-2 list-disc pl-6 mb-4">
             <li><b className="text-ink">Ranking</b> - stars first; forks and last-push always shown so ranking context survives.</li>
             <li><b className="text-ink">Difficulty labels</b> - derived, not claimed: beginner under 10k★, intermediate to 50k★, advanced above.</li>
-            <li><b className="text-ink">Logos &amp; cover art</b> - official org avatars via GitHub; hackathon covers are generated SVG motifs in each event's signature color, never copied artwork.</li>
+            <li><b className="text-ink">Beginner signal</b> - an issue counts as beginner-labelled only when GitHub carries a real good-first-issue or help-wanted label: {CRAWL.beginnerLabelled.toLocaleString("en-US")} of {CRAWL.issues.toLocaleString("en-US")} right now.</li>
+            <li><b className="text-ink">Logos</b> - official org avatars via GitHub, and program covers are our own generated SVG artwork, never copied branding.</li>
             <li><b className="text-ink">Sessions</b> - the demo sign-in and saved items live only in your browser's localStorage.</li>
           </ul>
 
@@ -297,11 +286,11 @@ export default function About() {
           <div className="bg-card border border-line rounded-[20px] p-6 shadow-soft">
             <h3 className="panel-h text-[17px] mb-4">Catalog at a glance</h3>
             {[
-              [String(REPOS.length), "repos in the snapshot"],
+              [CRAWL.issues.toLocaleString("en-US"), "open issues, crawled"],
+              [CRAWL.reposWithIssues.toLocaleString("en-US"), "repositories crawled for issues"],
+              [String(REPOS.length), "repos in the skill snapshot"],
               [String(ORGS.length), "organizations hand-picked"],
               [String(PROGRAMS.length), "mentorship programs tracked"],
-              [String(HACKS.length), "hackathons with prep plans"],
-              [String(RESOURCES.length), "learning resources vetted"],
               ["2026-10-02", "current snapshot date"],
             ].map(([v, l]) => (
               <div key={l} className="flex items-baseline justify-between gap-3 py-2.5 border-b border-liness last:border-0">
@@ -331,7 +320,7 @@ export default function About() {
           orgs and builders ship the same week. That's the whole trick - and the whole promise.
         </p>
         <div className="flex gap-3 justify-center flex-wrap mt-8">
-          <Link to="/projects" className={btn("dark", "md")}>Browse the catalog</Link>
+          <Link to="/skills" className={btn("dark", "md")}>Browse the catalog</Link>
           <Link to="/dashboard" className={btn("outline", "md")}>Open your dashboard</Link>
         </div>
       </section>

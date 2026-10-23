@@ -60,7 +60,7 @@ const DOCS: Record<LegalKind, Doc> = {
           <UL items={[
             <>GitHub - organization and repository avatars are fetched from GitHub's image CDN.</>,
             <>Google - the sign-in script and profile pictures, only if you use Google sign-in.</>,
-            <>Outbound links - hackathon and resource cards link to organizers' and publishers' own sites; their privacy practices are theirs, not ours.</>,
+            <>Outbound links - program and repository cards link to organizers' and maintainers' own sites; their privacy practices are theirs, not ours.</>,
           ]} />
         </>),
       },
@@ -96,11 +96,11 @@ const DOCS: Record<LegalKind, Doc> = {
       {
         id: "the-catalog", h: "The catalog and its data",
         body: (<>
-          <P>cyrus.ai lists public repositories, learning resources and hackathons assembled from public sources. Star counts and metadata are frozen in a snapshot dated 2 October 2026 and are refreshed periodically; always check the upstream source for live numbers.</P>
+          <P>cyrus.ai lists public repositories, open-source program records and organization profiles assembled from public sources. Star counts, issue counts and metadata are GitHub API snapshots refreshed periodically, and each page states the date it was crawled; always check the upstream source for live numbers.</P>
           <UL items={[
             <>Every listed repository remains under its own open-source license. Listing here does not change those terms - read the license at the source before using the code.</>,
             <>Repository descriptions may be quoted from GitHub exactly as their authors wrote them.</>,
-            <>Hackathon listings are informational summaries; the organizer's official site is always authoritative for rules, eligibility and deadlines.</>,
+            <>Program listings are informational summaries; the organizer's official site is always authoritative for rules, eligibility and deadlines.</>,
             <>Program and organization names, logos and marks belong to their respective owners and are used for identification only (see the <Link to="/affiliations" className="text-accent font-semibold hover:underline">affiliations page</Link>).</>,
           ]} />
         </>),
@@ -108,7 +108,7 @@ const DOCS: Record<LegalKind, Doc> = {
       {
         id: "acceptable-use", h: "Acceptable use",
         body: (<>
-          <P>Use the site to discover and evaluate developer resources. You agree not to:</P>
+          <P>Use the site to discover and evaluate open-source work. You agree not to:</P>
           <UL items={[
             <>Scrape or bulk-redistribute the catalog in ways that misrepresent its source or date.</>,
             <>Use the sign-up forms to impersonate others or submit content you have no rights to.</>,
@@ -126,7 +126,7 @@ const DOCS: Record<LegalKind, Doc> = {
       },
       {
         id: "liability", h: "Limitation of liability",
-        body: (<P>To the maximum extent permitted by law, the people behind cyrus.ai are not liable for damages arising from use of the site or reliance on its listings - including anything you install, deploy, or travel to a hackathon because of. Decisions about third-party code and events stay with you.</P>),
+        body: (<P>To the maximum extent permitted by law, the people behind cyrus.ai are not liable for damages arising from use of the site or reliance on its listings - including anything you install, deploy, or plan a season around because of. Decisions about third-party code and events stay with you.</P>),
       },
       {
         id: "changes-terms", h: "Changes and governing law",
@@ -176,7 +176,7 @@ const DOCS: Record<LegalKind, Doc> = {
       {
         id: "independent", h: "We are independent",
         body: (<>
-          <P>cyrus.ai is <b className="text-ink">not</b> owned, operated, sponsored, endorsed, or otherwise affiliated with any of the organizations, companies, or programs listed on the site, except where explicitly stated. Nothing here is official documentation from GitHub, Google, NASA, or any hackathon organizer.</P>
+          <P>cyrus.ai is <b className="text-ink">not</b> owned, operated, sponsored, endorsed, or otherwise affiliated with any of the organizations, companies, or programs listed on the site, except where explicitly stated. Nothing here is official documentation from GitHub, Google, or any program organizer.</P>
         </>),
       },
       {
@@ -184,14 +184,13 @@ const DOCS: Record<LegalKind, Doc> = {
         body: (<>
           <P>Company and project names, logos and marks appear for identification and commentary only - the standard nominative use of a directory. All trademarks belong to their respective owners. Organization avatars are fetched from GitHub as public identifiers of those organizations.</P>
           <UL items={[
-            <>Hackathon cover imagery in this catalog is drawn from public-domain NASA imagery of Earth and space.</>,
-            <>Repository and program listings quote names exactly as their owners publish them.</>,
+                        <>Repository and program listings quote names exactly as their owners publish them.</>,
           ]} />
         </>),
       },
       {
         id: "endorsement", h: "Listings are not endorsements",
-        body: (<P>Inclusion means we found an entry interesting or popular in the open-source ecosystem - it is not a recommendation, a vetting, or a guarantee. A repository listed here may be unmaintained, and a hackathon's terms may change after our snapshot. Always verify on the official source before you install code or register for an event.</P>),
+        body: (<P>Inclusion means we found an entry interesting or popular in the open-source ecosystem - it is not a recommendation, a vetting, or a guarantee. A repository listed here may be unmaintained, and a program's terms may change after our snapshot. Always verify on the official source before you install code or apply to a season.</P>),
       },
       {
         id: "commercial", h: "No paid placements, no affiliate links",

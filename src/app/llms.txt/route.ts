@@ -1,35 +1,30 @@
 /* ══ llms.txt — the plain-text index agents are pointed at ════════════
    A screenful, and every number and path in it comes from the same
    modules the pages use, so this file cannot drift from the site.
-   Rebuilt on deploy: the open-hackathon count is as fresh as the build. ══ */
-import { FREE_APIS } from "@/data/freeApis";
-import { TOOLS_TOTAL } from "@/lib/tools/data";
+   Rebuilt on deploy: the crawl counts are as fresh as the last run. ══ */
+import { PROGRAMS } from "@/data/orgs";
 import { canonical } from "@/lib/seo";
-import { ARCHIVE_PROJECTS, STATS, fmt, openHacks } from "@/lib/siteStats";
+import { STATS, fmt } from "@/lib/siteStats";
 
 const line = (path: string, what: string) => `- ${canonical(path)} - ${what}`;
 
 const body = `# cyrus.ai
 
-> The developer-program platform. ${fmt(STATS.repos)} AI-agent repos, ${fmt(ARCHIVE_PROJECTS)} mentored open-source projects, ${fmt(STATS.orgs)} organization profiles, ${STATS.programs} tracked programs and ${fmt(STATS.hacks)} hackathons (${fmt(openHacks())} open right now), in one self-refreshing catalog. Humans browse the pages below; agents can read the same data without parsing markup.
+> The developer-program platform. ${fmt(STATS.issues)} open issues across ${fmt(STATS.issueRepos)} repositories, ${fmt(STATS.catalog)} indexed repositories, ${fmt(STATS.orgs)} organization profiles and ${STATS.programs} tracked open-source programs, crawled from GitHub on ${STATS.crawledAt}. Humans browse the pages below; agents can read the same data without parsing markup.
 
 ## Pages
 
-${line("/projects", `the ${fmt(STATS.repos)}-repo catalog of agent skills, Cursor rules, AGENTS.md configs, MCP servers and dev tools, ranked by stars`)}
-${line("/opensource", `${fmt(ARCHIVE_PROJECTS)} mentored projects from GSoC, LFX, Outreachy, Hacktoberfest and Nexus Spring of Code, filterable by year, org and tech`)}
-${line("/hackathons", `${fmt(STATS.hacks)} hackathons with deadlines, prize pools, eligibility and a prep playbook for each`)}
+${line("/skills", `the ${fmt(STATS.catalog)}-repository catalog, ranked by stars, each entry linked to its live GitHub record`)}
+${line("/projects", `${fmt(STATS.archive)} mentored program projects from GSoC, LFX, Outreachy, Hacktoberfest and Nexus Spring of Code, filterable by year, org and tech`)}
+${line("/issues", `search ${fmt(STATS.issues)} open issues by keyword, language, organization, label, beginner-friendly and unassigned`)}
 ${line("/organizations", `${fmt(STATS.orgs)} real GitHub organizations with stats, program history and how to contribute to each`)}
-${line("/resources", `${fmt(STATS.resources)} first-party learning resources from the companies that build the tooling`)}
-${line("/tools", `${fmt(TOOLS_TOTAL)} build artifacts: live demos, copy-paste code and ready-made prompts`)}
-${line("/apis", `${fmt(FREE_APIS.length)} free public APIs, labelled by auth model and CORS support`)}
+- ${canonical("/programs/gsoc")} and one page like it per tracked program: ${PROGRAMS.map((p) => p.id).join(", ")}
 
 ## Object URLs
 
 - Repo detail: ${canonical("/repo/n8n-io%2Fn8n")} - the slash in owner/name is percent-encoded
-- Program detail: ${canonical("/programs/gsoc")} - ids are gsoc, outreachy, lfx, gssoc, oct, nsoc, esoc, kde, mlh, sob
-- Hackathon detail: ${canonical("/hackathons/github-universe-ai-hackathon-2026")}
+- Program detail: ${canonical("/programs/gsoc")}
 - Organization detail: ${canonical("/organizations/google")}
-- Resource detail: ${canonical("/resources/google-dev-learning")}
 
 ## Machine-readable
 
@@ -38,10 +33,13 @@ ${line("/apis", `${fmt(FREE_APIS.length)} free public APIs, labelled by auth mod
 - ${canonical("/api/health")} - reports {"ok":true,"db":boolean,"auth":boolean}
 - ${canonical("/api/catalog/counts")} - live row counts per catalog table
 - ${canonical("/api/catalog/repos")}?cat=skills|cursor|agentsmd|mcp|tools&q=&domain=&model=&format=&framework=&page=&per= - filtered rows, per caps at 60
+- ${canonical("/api/issues")}?q=&lang=&org=&label=&repo=&beginner=1&unassigned=1&sort=relevance|stars|updated|comments|oldest&page=&per= - paged JSON over the same issue snapshot the finder uses, 60 requests/minute per address
 
 The two catalog endpoints above answer 503 while no database is attached, and
 /api/health tells you whether one is. Everything else here is static content
 built from the checked-in datasets: no key, session or cookie is needed to read it.
+Issue counts come from the public GitHub search API; a number here is a crawl
+snapshot, and the page carrying it states the date it was taken.
 `;
 
 export function GET() {

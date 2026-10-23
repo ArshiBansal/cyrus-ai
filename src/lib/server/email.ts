@@ -2,11 +2,14 @@
    A 6-digit one-time code is generated with crypto.randomInt, stored as a
    sha256 hash (10-minute TTL, 6 tries, 30s resend lock) and delivered via
    the Resend HTTP API through plain fetch - no SDK, no new dependency.
-   Storage prefers the Neon email_codes table; without DATABASE_URL it
-   falls back to an in-memory Map so the flow still works per server
-   instance. Without RESEND_API_KEY the routes run in demo mode and hand
-   the code back to the UI instead of emailing it.                      ═ */
-import { createHash, randomInt } from "node:crypto";
+   Storage prefers the Neon email_codes table. Without DATABASE_URL the code
+   hash travels back to the browser inside an HMAC-signed envelope (needs
+   SESSION_SECRET), because a serverless verify request usually lands on an
+   instance that never saw the start request - a plain in-memory Map would
+   strand it there. The Map stays as the last resort so the flow also works
+   with neither variable. Without RESEND_API_KEY the routes run in demo mode
+   and hand the code back to the UI instead of emailing it.            ═ */
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { emailCodes } from "../db/schema";
@@ -61,7 +64,9 @@ export async function storeCode(email: string, code: string): Promise<boolean> {
   return true;
 }
 
-export async function checkCode(email: string, code: string): Promise<CodeResult> {
+export async function checkCode(
+  email: string, code: string, challenge?: string,
+): Promise<CodeResult & { challenge?: string | null }> {
   const now = Date.now();
   const db = getDb();
   if (db) {
@@ -83,6 +88,14 @@ export async function checkCode(email: string, code: string): Promise<CodeResult
     await db.update(emailCodes).set({ tries: r.tries + 1 }).where(eq(emailCodes.email, email));
     return { ok: false, reason: "wrong" };
   }
+  /* No table: a signed envelope from this client beats this instance's
+     memory, because the start request may well have been served elsewhere. */
+  if (challenge && secret().length >= 16) {
+    const r = checkEnvelope(email, code, challenge);
+    if (r.res.ok) return r.res;
+    if (r.res.reason === "wrong") return { ...r.res, challenge: r.challenge };
+    if (r.res.reason !== "no_code") return { ...r.res, challenge: null };
+  }
   const m = mem.get(email);
   if (!m) return { ok: false, reason: "no_code" };
   if (m.expiresAt < now) { mem.delete(email); return { ok: false, reason: "expired" }; }
@@ -101,6 +114,67 @@ export async function dropCode(email: string): Promise<void> {
 
 /* exported for tests: the raw memory store so cases can reset between runs */
 export const __mem = mem;
+
+/* ── stateless envelope (no DATABASE_URL) ─────────────────────────────
+   { email, code hash, expiry, tries, id } signed with HMAC-SHA256 over
+   SESSION_SECRET. The browser holds it between the two steps and hands it
+   back on verify, so any instance can check the code it was issued for.
+   The envelope never contains the code - only its hash - and the try
+   counter is re-signed on every miss. Strict single-use (retiring an
+   envelope the moment it is spent) needs the table; here spent ids are
+   remembered per instance as well, which is enough to stop casual replay.
+   ─────────────────────────────────────────────────────────────────── */
+type Envelope = { e: string; h: string; x: number; t: number; j: string };
+const spent = new Set<string>();
+
+const secret = (): string => (process.env.SESSION_SECRET ?? "").trim();
+
+/** the signed-envelope path is used only when there is no table to fall back on */
+export const envelopeReady = (): boolean => !dbBacked() && secret().length >= 16;
+
+const mac = (body: string): string => createHmac("sha256", secret()).update(body).digest("base64url");
+
+const pack = (env: Envelope): string => {
+  const body = Buffer.from(JSON.stringify(env)).toString("base64url");
+  return `${body}.${mac(body)}`;
+};
+
+function unpack(token: string): Envelope | null {
+  const [body, sig] = token.split(".");
+  if (!body || !sig) return null;
+  const want = Buffer.from(mac(body));
+  const got = Buffer.from(sig);
+  if (want.length !== got.length || !timingSafeEqual(want, got)) return null;
+  try {
+    const env = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as Envelope;
+    return typeof env.e === "string" && typeof env.h === "string" ? env : null;
+  } catch {
+    return null;
+  }
+}
+
+/** sign a fresh envelope for this address + code (null when unusable) */
+export function issueEnvelope(email: string, code: string): string | null {
+  if (!envelopeReady()) return null;
+  return pack({ e: email, h: hash(code), x: Date.now() + TTL_MS, t: 0, j: randomBytes(9).toString("base64url") });
+}
+
+/** check a code against an envelope; returns a re-signed one when it missed.
+   Re-signing rotates the id, which retires the token the client was holding. */
+export function checkEnvelope(email: string, code: string, token: string): { res: CodeResult; challenge: string | null } {
+  const env = unpack(token);
+  if (!env || env.e !== email || spent.has(env.j)) return { res: { ok: false, reason: "no_code" }, challenge: null };
+  const now = Date.now();
+  if (env.x < now) { spent.add(env.j); return { res: { ok: false, reason: "expired" }, challenge: null }; }
+  if (env.t >= MAX_TRIES) { spent.add(env.j); return { res: { ok: false, reason: "locked" }, challenge: null }; }
+  if (env.h === hash(code)) { spent.add(env.j); return { res: { ok: true }, challenge: null }; }
+  const next = { ...env, t: env.t + 1, j: randomBytes(9).toString("base64url") };
+  spent.add(env.j);
+  return { res: { ok: false, reason: "wrong" }, challenge: pack(next) };
+}
+
+/** exported for tests: the spent-id ledger */
+export const __spent = spent;
 
 /* ── sending via Resend (fetch only) ────────────────────────────────── */
 export type SendResult = { sent: true } | { sent: false; demo: true; code: string } | { sent: false; error: string };

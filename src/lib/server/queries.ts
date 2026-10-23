@@ -9,9 +9,13 @@ import {
   type ApplicationRow, type SavedItemRow,
 } from "../db/schema";
 
-export const ITEM_TYPES = ["repo", "org", "hackathon", "program", "resource", "artifact"] as const;
+/* Saved items and applications cover what the site has pages for now:
+   repositories, organizations, programs and issues. Rows written before
+   the rebuild can still carry a retired type ("hackathon", "resource",
+   "artifact"); they read back untouched, they just cannot be created. */
+export const ITEM_TYPES = ["repo", "org", "program", "issue"] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
-export const APP_KINDS = ["program", "hackathon"] as const;
+export const APP_KINDS = ["program"] as const;
 export const APP_STATUSES = ["drafting", "roadmap", "drafting_done", "submitted", "interview", "accepted", "rejected"] as const;
 export const SUBMISSION_KINDS = ["org_nomination", "data_fix", "feedback", "newsletter"] as const;
 
@@ -111,15 +115,15 @@ export async function addSubmission(input: { kind: (typeof SUBMISSION_KINDS)[num
 
 export async function catalogCounts() {
   const db = getDb()!;
-  type CountTable = "repos" | "orgs" | "hackathons" | "program_projects" | "resources";
+  type CountTable = "repos" | "orgs" | "program_projects";
   const one = (table: CountTable) => rowCount(db, table);
-  const [reposN, orgsN, hacksN, projectsN, resourcesN] = await Promise.all([
-    one("repos"), one("orgs"), one("hackathons"), one("program_projects"), one("resources"),
+  const [reposN, orgsN, projectsN] = await Promise.all([
+    one("repos"), one("orgs"), one("program_projects"),
   ]);
-  return { repos: reposN, orgs: orgsN, hackathons: hacksN, programProjects: projectsN, resources: resourcesN };
+  return { repos: reposN, orgs: orgsN, programProjects: projectsN };
 }
 
-async function rowCount(db: NonNullable<ReturnType<typeof getDb>>, table: "repos" | "orgs" | "hackathons" | "program_projects" | "resources"): Promise<number> {
+async function rowCount(db: NonNullable<ReturnType<typeof getDb>>, table: "repos" | "orgs" | "program_projects"): Promise<number> {
   const q = sql`select count(*)::int as n from ${sql.raw(`"${table}"`)}`;
   const res = await (db as unknown as { execute: (s: unknown) => Promise<unknown> }).execute(q);
   const row = (Array.isArray(res) ? res[0] : res) as { n: number } | undefined;

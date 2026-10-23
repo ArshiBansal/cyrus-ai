@@ -1,7 +1,10 @@
 /* ══ seed.ts — load the full catalog into Neon Postgres ══════════════
    Run: npm run db:seed   (needs DATABASE_URL in .env)
    Idempotent: each table is cleared and re-inserted inside one pass, so
-   the DB always mirrors the datasets in src/data + public/data. ══════ */
+   the DB always mirrors the datasets in src/data + public/data.
+   The hackathons and resources tables are cleared and left empty: those
+   sections were dropped in the rebuild, and a migration to drop the
+   tables themselves belongs with the issue-index schema work.        ══ */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { getDb } from "./index";
@@ -10,16 +13,13 @@ import {
   repos, resources, savedItems, submissions, users,
 } from "./schema";
 import { REPOS } from "../../data/repos";
-import { HACKS } from "../../data/hackathons";
-import { HACKS_LIVE } from "../../data/hackathonsLive";
 import { REAL_ORGS, REAL_REPOS, REAL_STATS } from "../../data/realOrgs";
-import { RESOURCES } from "../../data/resources";
+import { CRAWL } from "../../data/crawlStats";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const readJson = (rel: string) => JSON.parse(readFileSync(here + "/../../../public/data/" + rel, "utf8"));
 
 const CATALOG_SNAPSHOT = "2026-10-02"; // matches the refresh pipeline stamp
-const HACK_SNAPSHOT = "2026-10-03";
 
 function loadEnv() {
   if (process.env.DATABASE_URL) return;
@@ -108,24 +108,6 @@ async function main() {
     await db.insert(orgRepos).values(orgRepoRows.slice(i, i + 500));
   }
 
-  console.log(`Hackathons: ${HACKS_LIVE.length} live + ${HACKS.length} curated…`);
-  const hackRows = [...HACKS_LIVE, ...HACKS].map((h) => {
-    const { timeline, prep, approach, ideas, stack, ...head } = h;
-    return {
-      ...head,
-      orgLogo: h.orgLogo ?? null,
-      theme: h.theme ?? null,
-      deadline: h.deadline ?? null,
-      estimated: h.estimated ?? false,
-      url: "url" in h ? String(h.url) : null,
-      color: h.color ?? null,
-      art: h.art ?? null,
-      details: { timeline, prep, approach, ideas, stack },
-      snapshot: HACK_SNAPSHOT,
-    };
-  });
-  await db.insert(hackathons).values(hackRows).onConflictDoNothing();
-
   console.log("Program projects…");
   const gsoc = readJson("gsoc-projects.json");
   const other = readJson("otherProjects.json");
@@ -147,22 +129,16 @@ async function main() {
     await db.insert(programProjects).values(projRows.slice(i, i + 500)).onConflictDoNothing();
   }
 
-  console.log(`Resources: ${RESOURCES.length}…`);
-  await db.insert(resources).values(RESOURCES.map((r) => ({
-    id: r.id, title: r.title, provider: r.provider, brand: r.brand,
-    category: r.cat, level: r.level, time: r.time, url: r.url,
-    description: r.desc, why: r.why, use: r.use, tags: r.tags, free: r.free,
-  })));
-
   const counts = {
     repos: REPOS.length,
     orgs: REAL_ORGS.length,
-    hackathons: hackRows.length,
     programProjects: projRows.length,
-    resources: RESOURCES.length,
+    /* the crawl total is a count of GitHub issues, not of DB rows, so it
+       is kept in meta rather than reported by /api/catalog/counts */
+    crawledIssues: CRAWL.issues,
   };
   await db.insert(catalogMeta).values([
-    { key: "snapshot", value: { catalog: CATALOG_SNAPSHOT, hackathons: HACK_SNAPSHOT } },
+    { key: "snapshot", value: { catalog: CATALOG_SNAPSHOT, issues: CRAWL.crawledAt } },
     { key: "counts", value: counts },
   ]);
 

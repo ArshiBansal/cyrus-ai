@@ -1,4 +1,8 @@
-/* ══ programDetails.ts — deep-dive content for the eight tracked programs ══ */
+/* ══ programDetails.ts — deep-dive content for the tracked programs ══
+   One entry per /programs/:id route. Anything numeric here comes from the
+   organizer's own published page or from the project archive already in
+   public/data; where a program publishes no figures we say so in the copy
+   instead of filling the gap with an estimate.                        ══ */
 import type { Level } from "../lib/types";
 
 export interface ProgramYear { year: number; n: number }
@@ -18,7 +22,9 @@ export interface ProgramDetailData {
   focus: string[];
   chartTitle: string;
   chartUnit: string;
-  projectsPerYear: ProgramYear[];
+  /* only set where the organizer publishes real per-cycle figures; a program
+     with no numbers omits it and the page drops the chart rather than inventing one */
+  projectsPerYear?: ProgramYear[];
 }
 
 /* name -> program id used in /programs/:id routes */
@@ -33,6 +39,9 @@ export const PROGRAM_ID_BY_NAME: Record<string, string> = {
   Hacktoberfest: "oct",
   "Summer of Bitcoin": "sob",
   "Nexus Spring of Code": "nsoc",
+  "24 Pull Requests": "24pr",
+  "FOSSEE Summer Fellowship": "fossee",
+  "Vercel Open Source Program": "vercel-oss",
 };
 
 export const programLink = (name: string): string =>
@@ -425,5 +434,113 @@ export const PROGRAM_DETAILS: Record<string, ProgramDetailData> = {
     projectsPerYear: [
       { year: 2023, n: 120 }, { year: 2024, n: 310 }, { year: 2025, n: 540 },
     ],
+  },
+
+  /* ── the three December-to-summer community programs ──────────
+     None of them publishes a per-cycle project table, so these
+     entries carry no chart. What they do state is on their page. */
+  "24pr": {
+    level: "beginner",
+    duration: "24 days, 1 - 24 December",
+    tier: "Tier 3 - community gift drive",
+    difficulty: "None - no application, no selection, no quota",
+    eligibility: "Anyone with a GitHub account, in any language, on any repository",
+    tags: ["Free", "No application", "One month", "Any repository", "Maintainer-first"],
+    about: [
+      "24 Pull Requests asks for one thing through December: give back one pull request a day to the open-source projects you already use. There is no application round, no mentor matching and no shortlist - the calendar is the whole programme, and it reopens every year on 1 December.",
+      "Maintainers take part the other way round. They post to the project expo listing the work they would actually like to see done, so the December traffic lands on tasks someone volunteered to review instead of arriving cold. That single habit is why the drive works at all: the pull requests go to repositories whose owners asked for them.",
+      "Nothing is paid. The reward the organizers describe is the gift itself, which makes it the cheapest serious contribution streak available - and the one most likely to be read by a maintainer in January, when the tree is quiet.",
+    ],
+    howItWorks: [
+      ["December 1 - pick a project", "Open the expo on 24pullrequests.com and choose from what maintainers listed, or work on the repository you already depend on."],
+      ["One pull request a day", "There is no size rule. A docs fix, a repro report or a small test counts the same as a feature on any of the 24 days."],
+      ["Keep the streak visible", "Your December activity is public record on GitHub; the site tracks your contributions against the calendar."],
+      ["December 24 - hand it over", "Merge or leave the work open for review. Nothing is graded, and no certificate gates the next cycle."],
+    ],
+    whoFor: [
+      "First-time contributors who want a low-stakes reason to open their first pull request",
+      "Developers rebuilding a contribution history after a quiet year",
+      "Maintainers who want December backlog work to arrive through an explicit ask rather than cold outreach",
+    ],
+    outcomes: [
+      "A public month of merged and opened pull requests across real projects",
+      "Direct contact with maintainers whose software you already run",
+      "A habit-forming month that reads well in a later GSoC, LFX or Outreachy proposal",
+      "No cost, no application deadline and no risk of being rejected",
+    ],
+    stack: ["Any GitHub language"],
+    focus: ["Documentation", "Issue triage", "Bug fixes", "Test coverage"],
+    chartTitle: "Projects on the December expo",
+    chartUnit: "listed projects",
+  },
+
+  fossee: {
+    level: "intermediate",
+    duration: "One summer term, roughly April to early June",
+    tier: "Tier 2 - nationally run fellowship",
+    difficulty: "Screening tasks decide the shortlist",
+    eligibility: "Students applying through the FOSSEE registration desk at IIT Bombay",
+    tags: ["Mentored", "IIT Bombay", "FLOSS tracks", "Unpaid", "Screening tasks"],
+    about: [
+      "The FOSSEE Summer Fellowship is run by FOSSEE at IIT Bombay, the centre that maintains the free and open-source software tooling the institute teaches with. Fellows work inside those tracks - Scilab, Python, Oxide and the surrounding documentation and packaging layers - against a brief set by the track maintainers rather than a project they propose themselves.",
+      "Selection is by screening task. Registration opens early in the year, a set of tasks follows, and the fellowship term is awarded from that shortlist. It is mentored and structured like a paid programme but carries no honorarium, which the card on this page states plainly rather than leaving to implication.",
+      "The 2026 cycle closed on 8 June. Application volume is the one figure FOSSEE publishes at scale - more than 4,500 applications were received for 2026 - so the shortlist is genuinely competitive even though the seat is unpaid.",
+    ],
+    howItWorks: [
+      ["Registration (early in the year)", "Open a FOSSEE account and choose the tooling track you want to work in; eligibility is checked at this stage."],
+      ["Screening tasks", "Each track sets its own exercises. They are the selection, so treat them like a take-home interview for that stack."],
+      ["Fellowship term", "Accepted fellows work the track's issue backlog with a maintainer assigned, on the schedule the track publishes."],
+      ["Report and hand-off", "Deliverables land in the track's own repository or documentation set, with a closing report to the mentors."],
+    ],
+    whoFor: [
+      "Indian students who want a mentored summer inside a national FLOSS project",
+      "Contributors interested in scientific-computing tooling, packaging and documentation rather than app frameworks",
+      "Anyone building a mentored-program record before applying to a stipended season",
+    ],
+    outcomes: [
+      "Merged work inside IIT Bombay's open-source tooling, credited to the track",
+      "A named mentor relationship with maintainers who run the project year round",
+      "A completed mentored term to cite in later fellowship applications",
+      "Depth in one scientific stack instead of a spread of small fixes",
+    ],
+    stack: ["Python", "Scilab", "C/C++", "LaTeX", "Documentation"],
+    focus: ["Scientific computing", "Tooling and packaging", "Documentation", "Curriculum software"],
+    chartTitle: "Applications received",
+    chartUnit: "applications",
+  },
+
+  "vercel-oss": {
+    level: "advanced",
+    duration: "One quarter, renewed by cohort",
+    tier: "Tier 2 - infrastructure grant",
+    difficulty: "Project application, reviewed per cohort",
+    eligibility: "Maintained open-source projects, not individual contributors",
+    tags: ["Credits", "For maintainers", "Quarterly cohorts", "No cash grant"],
+    about: [
+      "The Vercel Open Source Program is a grant for the people who already run a project, not a route in for someone who wants to start. Accepted repositories receive platform hosting and credits worth $3,600 per project per quarter, which is the line item that usually decides whether a small team can keep a preview environment, an edge function and a build pipeline running without a commercial contract behind it.",
+      "Cohorts are selected quarterly and the Winter 2026 cohort carried 32 projects. Applications reopen for the next quarter rather than running on a rolling window, so the calendar matters more here than the deadline.",
+      "Read the terms before planning around it: this is credit, not salary. It lowers a project's hosting bill and pays nobody a stipend, which makes it the wrong answer for a contributor looking for income and a very good one for a maintained library that has outgrown its free tier.",
+    ],
+    howItWorks: [
+      ["Confirm eligibility", "The program funds maintained open-source projects. A repository with an active maintainer and a public user base is the profile it looks for."],
+      ["Apply for the next quarter", "Applications open per cohort on vercel.com/open-source-program; the Winter 2026 round closed with 32 projects accepted."],
+      ["Receive the credit", "Accepted projects are granted $3,600 in platform credit per quarter against their Vercel usage."],
+      ["Stay in good standing", "Cohorts are quarterly, so continued access depends on the project still being live and maintained at the next review."],
+    ],
+    whoFor: [
+      "Maintainers of open-source libraries and tools whose hosting bill has become the constraint",
+      "Project teams running preview deployments and edge functions for every pull request",
+      "Anyone weighing whether to move a hobby project onto a paid plan for infrastructure rather than features",
+    ],
+    outcomes: [
+      "$3,600 of quarterly platform credit per accepted project",
+      "Preview and production infrastructure that survives a spike in traffic",
+      "No cash stipend and no contributor seat - the grant goes to the project",
+      "A quarterly review, so the credit tracks the project staying maintained",
+    ],
+    stack: ["TypeScript", "React", "Next.js", "Any framework that deploys to Vercel"],
+    focus: ["Hosting and infrastructure", "Frontend tooling", "Project sustainability", "Preview environments"],
+    chartTitle: "Projects per cohort",
+    chartUnit: "accepted projects",
   },
 };

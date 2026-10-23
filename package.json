@@ -13,7 +13,6 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "refresh": "node scripts/refresh.mjs",
-    "covers": "node scripts/fetch-covers.mjs",
     "orgs": "node scripts/fetch-orgs.mjs",
     "gh-relay": "node scripts/github-exchange.local.mjs",
     "db:generate": "drizzle-kit generate",
@@ -25,6 +24,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
     "drizzle-orm": "^0.45.4",
+    "framer-motion": "^14.5.0",
     "jose": "^6.2.12",
     "next": "^16.4.0",
     "react": "^19.1.0",

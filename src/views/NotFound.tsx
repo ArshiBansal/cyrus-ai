@@ -15,7 +15,7 @@ export default function NotFound() {
       </p>
       <div className="flex gap-3 justify-center flex-wrap">
         <Link to="/" className={btn("primary", "lg")}>Back to the home page</Link>
-        <Link to="/projects" className={btn("outline", "lg")}>Browse projects</Link>
+        <Link to="/skills" className={btn("outline", "lg")}>Browse skills</Link>
       </div>
     </div>
   );

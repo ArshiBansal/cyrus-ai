@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Program cover">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#121415" />
+      <stop offset="0.55" stop-color="#1b2320" />
+      <stop offset="1" stop-color="#0e1a14" />
+    </linearGradient>
+    <radialGradient id="r" cx="0.72" cy="0.18" r="0.75">
+      <stop offset="0" stop-color="#4ade80" stop-opacity="0.20" />
+      <stop offset="1" stop-color="#4ade80" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)" />
+  <rect width="1200" height="630" fill="url(#r)" />
+  <g stroke="#eceef0" stroke-opacity="0.055" stroke-width="1">
+    <path d="M0 105H1200M0 210H1200M0 315H1200M0 420H1200M0 525H1200" />
+    <path d="M150 0V630M300 0V630M450 0V630M600 0V630M750 0V630M900 0V630M1050 0V630" />
+  </g>
+</svg>

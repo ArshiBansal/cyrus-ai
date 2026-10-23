@@ -13,6 +13,8 @@ interface Store {
   toggleSaved: (id: string) => boolean;
   savedOrgs: string[];
   toggleSavedOrg: (login: string) => boolean;
+  /** drop every followed repository and organization, locally and on the server */
+  unfollowAll: () => void;
   downloads: Record<string, number>;
   countDownload: (id: string) => void;
   toast: (msg: string) => void;
@@ -24,6 +26,10 @@ interface Store {
   toggleTheme: () => void;
   /** server session user when a cross-device backend session is active */
   serverUser: ServerUser | null;
+  /** false for the one frame before this browser's stored board has been read;
+      a gate uses it to wait instead of flashing the sign-in page at someone
+      who is already signed in */
+  boardReady: boolean;
   /** re-probe /api/me and merge saved items; call after a server sign-in */
   refreshSession: () => Promise<void>;
 }
@@ -32,19 +38,33 @@ const Ctx = createContext<Store>(null!);
 export const useStore = () => useContext(Ctx);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useStored<User | null>("agenthub.user", null);
-  const [saved, setSaved] = useStored<string[]>("agenthub.saved", []);
-  const [savedOrgs, setSavedOrgs] = useStored<string[]>("agenthub.savedorgs", []);
-  const [downloads, setDownloads] = useStored<Record<string, number>>("agenthub.downloads", {});
+  const [userStored, setUser, userReady] = useStored<User | null>("agenthub.user", null);
+  const [savedStored, setSaved, savedReady] = useStored<string[]>("agenthub.saved", []);
+  const [savedOrgsStored, setSavedOrgs, orgsReady] = useStored<string[]>("agenthub.savedorgs", []);
+  const [downloadsStored, setDownloads, dlReady] = useStored<Record<string, number>>("agenthub.downloads", {});
   const [toastMsg, setToastMsg] = useState<{ msg: string; k: number } | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [theme, setTheme] = useStored<"light" | "dark">("agenthub.theme", "light");
+  const [themeStored, setTheme, themeReady] = useStored<"light" | "dark">("agenthub.theme", "dark");
+
+  /* ── what the rest of the app may see on the first paint ──────────
+     The prerenderer has no localStorage, so the server pass always renders
+     the signed-out visitor. If the client's first render already showed the
+     stored session, the avatar and the sign-in button would disagree with
+     the HTML React is hydrating, and React 19 tears the tree down. So the
+     values handed out below stay at their initial state until the read has
+     happened, one frame later. The *stored* values above stay live: every
+     write path (sign in, follow, unfollow) must operate on what the browser
+     actually holds, never on the frozen placeholder.                    */
+  const user = userReady ? userStored : null;
+  const saved = savedReady ? savedStored : [];
+  const savedOrgs = orgsReady ? savedOrgsStored : [];
+  const downloads = dlReady ? downloadsStored : {};
 
   /* ── server sync layer (safe no-op when the backend is offline) ── */
   const [serverUser, setServerUser] = useState<ServerUser | null>(null);
-  const savedRef = useRef(saved); savedRef.current = saved;
-  const orgsRef = useRef(savedOrgs); orgsRef.current = savedOrgs;
+  const savedRef = useRef(savedStored); savedRef.current = savedStored;
+  const orgsRef = useRef(savedOrgsStored); orgsRef.current = savedOrgsStored;
   const titleFor = (id: string) => id.split("/")[1] ?? id;
 
   const refreshSession = useCallback(async () => {
@@ -69,12 +89,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { void refreshSession(); }, [refreshSession]);
 
-  /* flip the warm token set by toggling .dark on <html> */
+  /* dark is the default token set; the light variant is opt-out by adding
+     .light to <html>, so no class is needed for the default mode */
+  const theme = themeReady ? themeStored : "dark";
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    document.documentElement.style.colorScheme = theme;
-  }, [theme]);
-  const toggleTheme = useCallback(() => setTheme(theme === "dark" ? "light" : "dark"), [theme, setTheme]);
+    document.documentElement.classList.toggle("light", themeStored === "light");
+    document.documentElement.style.colorScheme = themeStored;
+  }, [themeStored]);
+  const toggleTheme = useCallback(() => setTheme(themeStored === "dark" ? "light" : "dark"), [themeStored, setTheme]);
 
   const toast = useCallback((msg: string) => setToastMsg({ msg, k: Date.now() }), []);
 
@@ -86,22 +108,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [setUser, toast, serverUser]);
 
   const toggleSaved = useCallback((id: string) => {
-    const added = !saved.includes(id);
-    setSaved(added ? [...saved, id] : saved.filter((x) => x !== id));
+    const added = !savedStored.includes(id);
+    setSaved(added ? [...savedStored, id] : savedStored.filter((x) => x !== id));
     if (serverUser) void (added ? api.savedAdd("repo", id, id.split("/")[1]) : api.savedRemove("repo", id));
     return added;
-  }, [saved, setSaved, serverUser]);
+  }, [savedStored, setSaved, serverUser]);
 
   const toggleSavedOrg = useCallback((login: string) => {
-    const added = !savedOrgs.includes(login);
-    setSavedOrgs(added ? [...savedOrgs, login] : savedOrgs.filter((x) => x !== login));
+    const added = !savedOrgsStored.includes(login);
+    setSavedOrgs(added ? [...savedOrgsStored, login] : savedOrgsStored.filter((x) => x !== login));
     if (serverUser) void (added ? api.savedAdd("org", login, login) : api.savedRemove("org", login));
     return added;
-  }, [savedOrgs, setSavedOrgs, serverUser]);
+  }, [savedOrgsStored, setSavedOrgs, serverUser]);
+
+  const unfollowAll = useCallback(() => {
+    if (serverUser) {
+      for (const id of savedRef.current) void api.savedRemove("repo", id);
+      for (const login of orgsRef.current) void api.savedRemove("org", login);
+    }
+    setSaved([]);
+    setSavedOrgs([]);
+  }, [setSaved, setSavedOrgs, serverUser]);
 
   const countDownload = useCallback((id: string) => {
-    setDownloads({ ...downloads, [id]: (downloads[id] || 0) + 1 });
-  }, [downloads, setDownloads]);
+    setDownloads({ ...downloadsStored, [id]: (downloadsStored[id] || 0) + 1 });
+  }, [downloadsStored, setDownloads]);
 
   /* auto-dismiss toast */
   useEffect(() => {
@@ -125,15 +156,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      user, signIn, signOut, saved, toggleSaved, savedOrgs, toggleSavedOrg,
+      user, signIn, signOut, saved, toggleSaved, savedOrgs, toggleSavedOrg, unfollowAll,
       downloads, countDownload,
       toast: (m: string) => toast(m), authOpen, setAuthOpen, paletteOpen, setPaletteOpen,
-      theme, toggleTheme, serverUser, refreshSession,
+      theme, toggleTheme, serverUser, refreshSession, boardReady: userReady,
     }}>
       {children}
       {toastMsg && (
         <div key={toastMsg.k} className="reveal fixed bottom-6 left-1/2 z-[120] -translate-x-1/2 flex items-center gap-2.5 rounded-full bg-coffee border border-roast text-foam px-5.5 py-3 text-[14px] font-semibold shadow-lift">
-          <span className="text-[#7ee2a8]">✓</span> {toastMsg.msg}
+          <span className="text-accent">✓</span> {toastMsg.msg}
         </div>
       )}
     </Ctx.Provider>
